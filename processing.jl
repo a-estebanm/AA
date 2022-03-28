@@ -1,6 +1,15 @@
 using Images
 using TestImages
 using Statistics
+using JLD2
+
+function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
+    matrix = Array{Float64, 3}(undef, size(image,1), size(image,2), 3)
+    matrix[:,:,1] = convert(Array{Float64,2}, red.(image));
+    matrix[:,:,2] = convert(Array{Float64,2}, green.(image));
+    matrix[:,:,3] = convert(Array{Float64,2}, blue.(image));
+    return matrix;
+end;
 
 function main() 
     if (!occursin("BD",pwd())) 
@@ -23,9 +32,11 @@ function main()
             red_mean[n_estilo] += mean(red.(img))
             blue_mean[n_estilo] += mean(blue.(img))
             green_mean[n_estilo] += mean(green.(img))
+            auxiliar=imageToColorArray(img)
+            print("AUX:", auxiliar,"\n")
         end
     end
-    loadFolderImages("Barroco/")
+
     print("Resultados\n")
     print("media acumulada de rojo del barroco:", red_mean[1],"\n")
     print("media acumulada de azul del barroco:", blue_mean[1],"\n")
@@ -36,33 +47,6 @@ function main()
     print("Final del programa\n")
 
 end
-
-imageToGrayArray(image:: Array{RGB{Normed{UInt8,8}},2}) = convert(Array{Float64,2}, gray.(Gray.(image)));
-imageToGrayArray(image::Array{RGBA{Normed{UInt8,8}},2}) = imageToGrayArray(RGB.(image));
-function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
-    matrix = Array{Float64, 3}(undef, size(image,1), size(image,2), 3)
-    matrix[:,:,1] = convert(Array{Float64,2}, red.(image));
-    matrix[:,:,2] = convert(Array{Float64,2}, green.(image));
-    matrix[:,:,3] = convert(Array{Float64,2}, blue.(image));
-    return matrix;
-end;
-imageToColorArray(image::Array{RGBA{Normed{UInt8,8}},2}) = imageToColorArray(RGB.(image));
-
-function loadFolderImages(folderName::String)
-    isImageExtension(fileName::String) = any(uppercase(fileName[end-3:end]) .== [".JPG", ".PNG"]);
-    images = [];
-    for fileName in readdir(folderName)
-        if isImageExtension(fileName)
-            image = load(string(folderName, "/", fileName));
-            # Check that they are color images
-            @assert(isa(image, Array{RGBA{Normed{UInt8,8}},2}) || isa(image, Array{RGB{Normed{UInt8,8}},2}))
-            # Add the image to the vector of images
-            push!(images, image);
-        end;
-    end;
-    # Convert the images to arrays by broadcasting the conversion functions, and return the resulting vectors
-    return (imageToColorArray.(images), imageToGrayArray.(images));
-end;
 
 main()
 
