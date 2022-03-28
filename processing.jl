@@ -32,8 +32,8 @@ function main()
             red_mean[n_estilo] += mean(red.(img))
             blue_mean[n_estilo] += mean(blue.(img))
             green_mean[n_estilo] += mean(green.(img))
-            auxiliar=imageToColorArray(img)
-            print("AUX:", auxiliar,"\n")
+            #auxiliar=imageToColorArray(img)
+            #print("AUX:", auxiliar,"\n")
         end
     end
 
