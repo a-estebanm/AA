@@ -208,7 +208,7 @@ learningRate = 0.01; # Tasa de aprendizaje
 numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
 testRatio = 0.2; # Porcentaje de patrones que se usaran para test
 # Cargamos el dataset
-dataset = readdlm("iris.data",',');
+dataset = readdlm("AA\\Codigospracticas\\iris.data",',');
 # Preparamos las entradas y las salidas deseadas
 inputs = convert(Array{Float64,2}, dataset[:,1:4]);
 targets = oneHotEncoding(dataset[:,5]);
@@ -241,7 +241,7 @@ validationRatio = 0.2; # Porcentaje de patrones que se usaran para validacion
 testRatio = 0.2; # Porcentaje de patrones que se usaran para test
 maxEpochsVal = 6; # Numero de ciclos en los que si no se mejora el loss en el conjunto de validacion, se para el entrenamiento
 # Cargamos el dataset
-dataset = readdlm("iris.data",',');
+dataset = readdlm("AA\\Codigospracticas\\iris.data",',');
 # Preparamos las entradas y las salidas deseadas
 inputs = convert(Array{Float64,2}, dataset[:,1:4]);
 targets = oneHotEncoding(dataset[:,5]);
