@@ -2,22 +2,28 @@ using Random
 using DelimitedFiles
 include("script2.jl")
 
-
+#Función para dividir bd en dos subconjuntos
+#Input: N número de patrones, P % patrones separados para test
+#Output: Tupla de 2 vectores con indices para entrenamiento y test
 function holdOut(N::Int, P::Float64)
     @assert ((P>=0.) & (P<=1.));
     indices = randperm(N);
     numTrainingInstances = Int(round(N*(1-P)));
     return (indices[1:numTrainingInstances],
-    indices[numTrainingInstances+1:end]);
+            indices[numTrainingInstances+1:end]);
+    @assert (indices[1:numTrainingInstances].length+indices[numTrainingInstances+1:end].length)=N;      
 end
 
+#Función para dividir bd en tres subconjuntos
+#Input: N número de patrones, Pval % patrones separados para validación y Ptest % patrones separados para test
+#Output: Tupla de 3 vectores con indices para entrenamiento, validación y test
 function holdOut(N::Int, Pval::Float64, Ptest::Float64)
     @assert ((Pval>=0.) & (Pval<=1.));
     @assert ((Ptest>=0.) & (Ptest<=1.));
     @assert ((Pval+Ptest)<=1.);
-    # Primero separamos en entrenamiento+validation y test
+    #(Entrenamiento+validación) y test
     (trainingValidationIndices, testIndices) = holdOut(N, Ptest);
-    # Después separamos el conjunto de entrenamiento+validation
+    #Entrenamiento y validación
     (trainingIndices, validationIndices) =
     holdOut(length(trainingValidationIndices),
     Pval*N/length(trainingValidationIndices))
