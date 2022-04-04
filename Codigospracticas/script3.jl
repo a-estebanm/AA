@@ -1,4 +1,5 @@
 using Random
+using DelimitedFiles
 
 
 function holdOut(N::Int, P::Float64)
@@ -222,7 +223,7 @@ testTargets = targets[testIndices,:];
 # Calculamos los valores de normalizacion solo del conjunto de entrenamiento
 normalizationParams = calculateMinMaxNormalizationParameters(trainingInputs);
 # Normalizamos las entradas entre maximo y minimo de forma separada para
-entrenamiento y test, con los parametros hallados anteriormente
+#entrenamiento y test, con los parametros hallados anteriormente
 normalizeMinMax!(trainingInputs, normalizationParams);
 normalizeMinMax!(testInputs, normalizationParams);
 # Y creamos y entrenamos la RNA con los parametros dados

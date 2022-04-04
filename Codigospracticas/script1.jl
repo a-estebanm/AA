@@ -38,3 +38,5 @@ function normalize(inputs::Array{Float32,2})
 end
 
 norm_inputs=normalize(inputs)
+
+println("End of first script")
