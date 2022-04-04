@@ -1,5 +1,6 @@
 using Random
 using DelimitedFiles
+include("script2.jl")
 
 
 function holdOut(N::Int, P::Float64)
