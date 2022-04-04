@@ -2,7 +2,7 @@ using DelimitedFiles
 using Flux
 include("script1.jl")
 
-in=transpose(database)
+in=transpose(norm_inputs)
 
 ann = Chain();
 ann = Chain(ann..., Dense(9, 5, σ) );

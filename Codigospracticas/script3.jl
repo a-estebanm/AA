@@ -265,3 +265,5 @@ validationInputs, validationTargets,
 testInputs, testTargets;
 maxEpochs=numMaxEpochs, learningRate=learningRate,
 maxEpochsVal=maxEpochsVal, showText=true);
+
+print("\n\nEnd Practice Three\n\n")

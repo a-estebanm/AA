@@ -39,4 +39,4 @@ end
 
 norm_inputs=normalize(inputs)
 
-println("End of first script")
+print("\n\nEnd Practice One\n\n")
