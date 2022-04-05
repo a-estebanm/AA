@@ -9,9 +9,12 @@ function holdOut(N::Int, P::Float64)
     @assert ((P>=0.) & (P<=1.));
     indices = randperm(N);
     numTrainingInstances = Int(round(N*(1-P)));
+
+    @assert (indices[1:numTrainingInstances].length+
+            indices[numTrainingInstances+1:end].length)=N;      
+
     return (indices[1:numTrainingInstances],
             indices[numTrainingInstances+1:end]);
-    @assert (indices[1:numTrainingInstances].length+indices[numTrainingInstances+1:end].length)=N;      
 end
 
 #Función para dividir bd en tres subconjuntos
@@ -27,9 +30,15 @@ function holdOut(N::Int, Pval::Float64, Ptest::Float64)
     (trainingIndices, validationIndices) =
     holdOut(length(trainingValidationIndices),
     Pval*N/length(trainingValidationIndices))
+
+    @assert (trainingValidationIndices[trainingIndices].length+
+            trainingValidationIndices[validationIndices].length+
+            testIndices.length)=N;      
+
     return (trainingValidationIndices[trainingIndices],
     trainingValidationIndices[validationIndices], testIndices);
 end;
+
 # Funcion para entrenar RR.NN.AA. con conjuntos de entrenamiento y test
 # Es la funcion anterior, modificada para calcular errores en el conjunto de test
 function trainClassANN(topology::Array{Int64,1},
