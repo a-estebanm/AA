@@ -39,8 +39,7 @@ function OneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{
     end
 end
 
-oneHotEncoding(feature::Array{Any,1}) = oneHotEncoding(feature::Array{Any,1},
-unique(feature));
+oneHotEncoding(feature::Array{Any,1}) = oneHotEncoding(feature::Array{Any,1}, unique(feature));
 
 oneHotEncoding(feature::Array{Bool,1}) = feature; #Usar reshape?
 
@@ -83,177 +82,7 @@ function normalizeMinMax!(normMatrix::AbstractArray{<:Real,2}, param::NTuple{2, 
 
 end
 
-#MIRAR LO DE ARRIBA
 
-#Input: outputs (Salidas de un modelo con un patron por fila)
-#Output: outputsBoolean (Matriz de valores bool que indica la clasificación)
-function classifyOutputs(outputs::Array{Float64,2}; dataInRows::Bool=true, threshold::Float64=0.5)
-    numOutputs = size(outputs, dataInRows ? 2 : 1);
-    @assert(numOutputs!=2)
-    if numOutputs==1
-        #Si tiene una columna, broadcast de >= para generar matriz de vectores bool
-        return convert(Array{Bool,2}, outputs.>=threshold);
-    else
-        #Si tiene más de una crear matriz con true en columna de valor mayor
-        
-        # Encontrar donde esta el valor mayor
-        (_,indicesMaxEachInstance) = findmax(outputs, dims= dataInRows ? 2 : 1);
-        # Inicializamos la matriz a falso y cambiamos esos valores
-        outputsBoolean = Array{Bool,2}(falses(size(outputs)));
-        outputsBoolean[indicesMaxEachInstance] .= true;
-        # Verificamos que cada patron solo este en una clase
-        @assert(all(sum(outputsBoolean, dims=dataInRows ? 2 : 1).==1));
-        return outputsBoolean;
-    end;
-end;
-
-#Cuatro funciones accuracy que calculen la precisión en un problema de clasificación
-#Inputs: targets(Matriz salidas deseadas) y outputs(Salidas emitidas por modelo)
-
-#Función 1
-accuracy(outputs::Array{Bool,1}, targets::Array{Bool,1}) = mean(outputs.==targets);
-
-#Función 2
-function accuracy(outputs::Array{Bool,2}, targets::Array{Bool,2}; dataInRows::Bool=true)
-    @assert(all(size(outputs).==size(targets)));
-    if (dataInRows)
-        # Cada patron esta en cada fila
-        if (size(targets,2)==1)
-            #Si sólo tiene una columna llamada a la anterior función
-            return accuracy(outputs[:,1], targets[:,1]);
-        else
-            #Si tiene más de dos, comparar ambas matrices mirando dónde no coinciden
-            classComparison = targets .== outputs
-            correctClassifications = all(classComparison, dims=2)
-            return mean(correctClassifications)
-        end;
-    else
-        # Cada patron esta en cada columna
-        if (size(targets,1)==1)
-            return accuracy(outputs[1,:], targets[1,:]);
-        else
-            classComparison = targets .== outputs
-            correctClassifications = all(classComparison, dims=1)
-            return mean(correctClassifications)
-        end;
-    end;
-end;
-
-#Función 3
-accuracy(outputs::Array{Float64,1}, targets::Array{Bool,1}; threshold::Float64=0.5) = accuracy(Array{Bool,1}(outputs.>=threshold), targets);
-
-#Funcion 4
-function accuracy(outputs::Array{Float64,2}, targets::Array{Bool,2}; 
-                    dataInRows::Bool=true)
-    @assert(all(size(outputs).==size(targets)));
-    if (dataInRows)
-        # Cada patron esta en cada fila
-        if (size(targets,2)==1)
-            return accuracy(outputs[:,1], targets[:,1]);
-        else
-            return accuracy(classifyOutputs(outputs; dataInRows=true), targets);
-        end;
-    else
-        # Cada patron esta en cada columna
-        if (size(targets,1)==1)
-            return accuracy(outputs[1,:], targets[1,:]);
-        else
-            return accuracy(classifyOutputs(outputs; dataInRows=false),
-                            targets);
-        end;
-    end;
-end;
-# Añado estas funciones porque las RR.NN.AA. dan la salida como matrices de valores Float32 en lugar de Float64
-# Con estas funciones se pueden usar indistintamente matrices de Float32 o
-Float64
-accuracy(outputs::Array{Float32,1}, targets::Array{Bool,1};
-threshold::Float64=0.5) = accuracy(Float64.(outputs), targets;
-threshold=threshold);
-accuracy(outputs::Array{Float32,2}, targets::Array{Bool,2};
-dataInRows::Bool=true) = accuracy(Float64.(outputs), targets;
-dataInRows=dataInRows);
-
-print("\n\nEnd Practice Two\n\n")
-
-# ------------------------------------- Practica 2
-# -------------------------------------------------------
-# Funciones para crear y entrenar una RNA
-function buildClassANN(numInputs::Int64, topology::Array{Int64,1},
-numOutputs::Int64)
-ann=Chain();
-numInputsLayer = numInputs;
-for numOutputLayers = topology
-ann = Chain(ann..., Dense(numInputsLayer, numOutputLayers, σ));
-numInputsLayer = numOutputLayers;
-end;
-if (numOutputs == 1)
-ann = Chain(ann..., Dense(numInputsLayer, 1, σ));
-else
-ann = Chain(ann..., Dense(numInputsLayer, numOutputs, identity));
-ann = Chain(ann..., softmax);
-end;
-return ann;
-end;
-
-function trainClassANN(topology::Array{Int64,1}, inputs::Array{Float64,2},
-targets::Array{Bool,2}; maxEpochs::Int64=1000, minLoss::Float64=0.0,
-learningRate::Float64=0.1)
-# Se supone que tenemos cada patron en cada fila
-# Comprobamos que el numero de filas (numero de patrones) coincide
-@assert(size(inputs,1)==size(targets,1));
-# Creamos la RNA
-ann = buildClassANN(size(inputs,2), topology, size(targets,2));
-# Definimos la funcion de loss
-loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) :
-Losses.crossentropy(ann(x),y);
-# Creamos los vectores con los valores de loss y de precision en cada ciclo
-trainingLosses = Float64[];
-trainingAccuracies = Float64[];
-# Empezamos en el ciclo 0
-numEpoch = 0;
-# Una funcion util para calcular los resultados y mostrarlos por pantalla
-function calculateMetrics()
-# Calculamos el loss. Para ello hay que pasar las matrices traspuestas(cada patron en una columna)
-trainingLoss = loss(inputs', targets');
-# Calculamos la salida de la RNA. Para ello hay que pasar la matriz de 
-#entradas traspuesta (cada patron en una columna). La matriz de salidas tiene un
-#patron en cada columna
-outputs = ann(inputs');
-# Para calcular la precision, ponemos 2 opciones aqui equivalentes:
-# Pasar las matrices con los datos en las columnas. La matriz de
-#salidas ya tiene un patron en cada columna
-acc = accuracy(outputs, Array{Bool,2}(targets'); dataInRows=false);
-# Pasar las matrices con los datos en las filas. Hay que trasponer la
-#matriz de salidas de la RNA, puesto que cada dato esta en una fila
-acc = accuracy(Array{Float64,2}(outputs'), targets; dataInRows=true);
-# Mostramos por pantalla el resultado de este ciclo de entrenamiento
-println("Epoch ", numEpoch, ": loss: ", trainingLoss, ", accuracy: ",
-100*acc, " %");
-return (trainingLoss, acc)
-end;
-# Calculamos las metricas para el ciclo 0 (sin entrenar nada)
-(trainingLoss, trainingAccuracy) = calculateMetrics();
-# y almacenamos el valor de loss y precision en este ciclo
-push!(trainingLosses, trainingLoss);
-push!(trainingAccuracies, trainingAccuracy);
-# Entrenamos hasta que se cumpla una condicion de parada
-while (numEpoch<maxEpochs) && (trainingLoss>minLoss)
-# Entrenamos 1 ciclo. Para ello hay que pasar las matrices traspuestas
-#(cada patron en una columna)
-Flux.train!(loss, params(ann), [(inputs', targets')],
-ADAM(learningRate));
-# Aumentamos el numero de ciclo en 1
-numEpoch += 1;
-
-# Calculamos las metricas en este ciclo
-(trainingLoss, trainingAccuracy) = calculateMetrics()
-# y almacenamos el valor de loss y precision en este ciclo
-push!(trainingLosses, trainingLoss);
-push!(trainingAccuracies, trainingAccuracy);
-end;
-return (ann, trainingLosses, trainingAccuracies);
-end;
-# -------------------------------------------------------------------------
 # Funciones para calcular los parametros de normalizacion y normalizar
 # Para calcular los parametros de normalizacion, segun la forma de normalizar
 #que se desee:
@@ -340,8 +169,6 @@ end;
 normalizeZeroMean(dataset::Array{Float64,2}; dataInRows=true) =
 normalizeZeroMean(dataset, calculateZeroMeanNormalizationParameters(dataset;
 dataInRows=dataInRows); dataInRows=dataInRows);
-# -------------------------------------------------------------------------
-# Ejemplo de uso de estas funciones:
 
 # Parametros principales de la RNA y del proceso de entrenamiento
 topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
@@ -368,3 +195,179 @@ normalizeMinMax!(inputs);
 # Y creamos y entrenamos la RNA con los parametros dados
 (ann, trainingLosses, trainingAccuracies) = trainClassANN(topology, inputs,
 targets; maxEpochs=numMaxEpochs, learningRate=learningRate);
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Input: outputs (Salidas de un modelo con un patron por fila)
+#Output: outputsBoolean (Matriz de valores bool que indica la clasificación)
+function classifyOutputs(outputs::Array{Float64,2}; dataInRows::Bool=true, threshold::Float64=0.5)
+    numOutputs = size(outputs, dataInRows ? 2 : 1);
+    @assert(numOutputs!=2)
+    if numOutputs==1
+        #Si tiene una columna, broadcast de >= para generar matriz de vectores bool
+        return convert(Array{Bool,2}, outputs.>=threshold);
+    else
+        #Si tiene más de una crear matriz con true en columna de valor mayor
+        
+        # Encontrar donde esta el valor mayor
+        (_,indicesMaxEachInstance) = findmax(outputs, dims= dataInRows ? 2 : 1);
+        # Inicializamos la matriz a falso y cambiamos esos valores
+        outputsBoolean = Array{Bool,2}(falses(size(outputs)));
+        outputsBoolean[indicesMaxEachInstance] .= true;
+        # Verificamos que cada patron solo este en una clase
+        @assert(all(sum(outputsBoolean, dims=dataInRows ? 2 : 1).==1));
+        return outputsBoolean;
+    end;
+end;
+
+#Cuatro funciones accuracy que calculen la precisión en un problema de clasificación
+#Inputs: targets(Matriz salidas deseadas) y outputs(Salidas emitidas por modelo)
+
+#Función 1
+accuracy(outputs::Array{Bool,1}, targets::Array{Bool,1}) = mean(outputs.==targets);
+
+#Función 2
+function accuracy(outputs::Array{Bool,2}, targets::Array{Bool,2}; dataInRows::Bool=true)
+    @assert(all(size(outputs).==size(targets)));
+    if (dataInRows)
+        # Cada patron esta en cada fila
+        if (size(targets,2)==1)
+            #Si sólo tiene una columna llamada a la anterior función
+            return accuracy(outputs[:,1], targets[:,1]);
+        else
+            #Si tiene más de dos, comparar ambas matrices mirando dónde no coinciden
+            classComparison = targets .== outputs
+            correctClassifications = all(classComparison, dims=2)
+            return mean(correctClassifications)
+            #Otra forma:
+            #classComparison = targets .!= outputs
+            #incorrectClassifications = any(classComparison, dims=2)
+            #accuracy = 1 - mean(incorrectClassifications)
+        end;
+    else
+        # Cada patron esta en cada columna
+        if (size(targets,1)==1)
+            return accuracy(outputs[1,:], targets[1,:]);
+        else
+            classComparison = targets .== outputs
+            correctClassifications = all(classComparison, dims=1)
+            return mean(correctClassifications)
+        end;
+    end;
+end;
+
+#Función 3
+accuracy(outputs::Array{Float64,1}, targets::Array{Bool,1}; threshold::Float64=0.5) = accuracy(Array{Bool,1}(outputs.>=threshold), targets);
+
+#Funcion 4
+function accuracy(outputs::Array{Float64,2}, targets::Array{Bool,2}; dataInRows::Bool=true)
+    @assert(all(size(outputs).==size(targets)));
+    if (dataInRows)
+        # Cada patron esta en cada fila
+        if (size(targets,2)==1)
+            return accuracy(outputs[:,1], targets[:,1]);
+        else
+            return accuracy(classifyOutputs(outputs; dataInRows=true), targets);
+        end;
+    else
+        # Cada patron esta en cada columna
+        if (size(targets,1)==1)
+            return accuracy(outputs[1,:], targets[1,:]);
+        else
+            return accuracy(classifyOutputs(outputs; dataInRows=false), targets);
+        end;
+    end;
+end;
+
+#La salida de las funciones es Float32, con el siguiente código puede ser tanto Float32 como Float64
+accuracy(outputs::Array{Float32,1}, targets::Array{Bool,1}; threshold::Float64=0.5) = 
+    accuracy(Float64.(outputs), targets; threshold=threshold);
+accuracy(outputs::Array{Float32,2}, targets::Array{Bool,2}; dataInRows::Bool=true) = 
+    accuracy(Float64.(outputs), targets; dataInRows=dataInRows);
+
+#Función crear ANN de clasificación
+#Input:
+#Output: 
+function buildClassANN(numInputs::Int64, topology::Array{Int64,1}, numOutputs::Int64)
+    ann=Chain();
+    numInputsLayer = numInputs;
+    for numOutputLayers = topology
+        ann = Chain(ann..., Dense(numInputsLayer, numOutputLayers, σ));
+        numInputsLayer = numOutputLayers;
+    end;
+    if (numOutputs == 1)
+        ann = Chain(ann..., Dense(numInputsLayer, 1, σ));
+    else
+        ann = Chain(ann..., Dense(numInputsLayer, numOutputs, identity));
+        ann = Chain(ann..., softmax);
+    end;
+    return ann;
+end;
+
+function trainClassANN(topology::Array{Int64,1}, inputs::Array{Float64,2}, targets::Array{Bool,2}; maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1)
+    # Se supone que tenemos cada patron en cada fila
+    # Comprobamos que el numero de filas (numero de patrones) coincide
+    @assert(size(inputs,1)==size(targets,1));
+    # Creamos la RNA
+    ann = buildClassANN(size(inputs,2), topology, size(targets,2));
+    # Definimos la funcion de loss
+    loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) :
+    Losses.crossentropy(ann(x),y);
+    # Creamos los vectores con los valores de loss y de precision en cada ciclo
+    trainingLosses = Float64[];
+    trainingAccuracies = Float64[];
+    # Empezamos en el ciclo 0
+    numEpoch = 0;
+    # Una funcion util para calcular los resultados y mostrarlos por pantalla
+    function calculateMetrics()
+        # Calculamos el loss. Para ello hay que pasar las matrices traspuestas(cada patron en una columna)
+        trainingLoss = loss(inputs', targets');
+        # Calculamos la salida de la RNA. Para ello hay que pasar la matriz de 
+        #entradas traspuesta (cada patron en una columna). La matriz de salidas tiene un
+        #patron en cada columna
+        outputs = ann(inputs');
+        # Para calcular la precision, ponemos 2 opciones aqui equivalentes:
+        # Pasar las matrices con los datos en las columnas. La matriz de
+        #salidas ya tiene un patron en cada columna
+        acc = accuracy(outputs, Array{Bool,2}(targets'); dataInRows=false);
+        # Pasar las matrices con los datos en las filas. Hay que trasponer la
+        #matriz de salidas de la RNA, puesto que cada dato esta en una fila
+        acc = accuracy(Array{Float64,2}(outputs'), targets; dataInRows=true);
+        # Mostramos por pantalla el resultado de este ciclo de entrenamiento
+        println("Epoch ", numEpoch, ": loss: ", trainingLoss, ", accuracy: ", 100*acc, " %");
+        return (trainingLoss, acc)
+    end;
+    # Calculamos las metricas para el ciclo 0 (sin entrenar nada)
+    (trainingLoss, trainingAccuracy) = calculateMetrics();
+    # y almacenamos el valor de loss y precision en este ciclo
+    push!(trainingLosses, trainingLoss);
+    push!(trainingAccuracies, trainingAccuracy);
+    # Entrenamos hasta que se cumpla una condicion de parada
+    while (numEpoch<maxEpochs) && (trainingLoss>minLoss)
+        # Entrenamos 1 ciclo. Para ello hay que pasar las matrices traspuestas
+        #(cada patron en una columna)
+        Flux.train!(loss, params(ann), [(inputs', targets')],
+        ADAM(learningRate));
+        # Aumentamos el numero de ciclo en 1
+        numEpoch += 1;
+        
+        # Calculamos las metricas en este ciclo
+        (trainingLoss, trainingAccuracy) = calculateMetrics()
+        # y almacenamos el valor de loss y precision en este ciclo
+        push!(trainingLosses, trainingLoss);
+        push!(trainingAccuracies, trainingAccuracy);
+    end;
+    return (ann, trainingLosses, trainingAccuracies);
+end;
+
+print("\n\nEnd Practice Two\n\n")
