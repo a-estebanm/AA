@@ -107,7 +107,7 @@ function classifyOutputs(outputs::Array{Float64,2}; dataInRows::Bool=true, thres
     end;
 end;
 
-#Cuatro funciones accuracy que calcule la precisión en un problema de clasificación
+#Cuatro funciones accuracy que calculen la precisión en un problema de clasificación
 #Inputs: targets(Matriz salidas deseadas) y outputs(Salidas emitidas por modelo)
 
 #Función 1
