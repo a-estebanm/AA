@@ -45,50 +45,51 @@ oneHotEncoding(feature::Array{Bool,1}) = reshape(feature,1); #MIRAR ESTO
 
 print("\n\nEnd oneHotEncoding\n\n")
 
-function calculateMinMaxNormalizationParameters(input::AbstractArray{<:Real,2})
-    mins::Matrix{Any,1}
-    maxs::Matrix{Any,1}
-    for x in 1:size(input,2)
-        maxv::Float32=maximum(input[:,x])
-	    minv::Float32=minimum(input[:,x])
+calculateMinMaxNormalizationParameters(dataset::AbstractArray{<:Real,2}; dataInRows=true) =
+    ( minimum(dataset, dims=(dataInRows ? 1 : 2)), maximum(dataset,dims=(dataInRows ? 1 : 2)) );
 
-        mins[x]=minv
-        maxs[x]=maxv
-    end
-    return (mins, maxs)
-end
+    #Alternativa:
+#function calculateMinMaxNormalizationParameters(input::AbstractArray{<:Real,2})
+#    mins::Matrix{Any,1}
+#    maxs::Matrix{Any,1}
+#    for x in 1:size(input,2)
+#        maxv::Float32=maximum(input[:,x])
+#	    minv::Float32=minimum(input[:,x])
 
-#Alternativa:
-#calculateMinMaxNormalizationParameters(dataset::Array{Float64,2}; dataInRows=true) =
-#    ( minimum(dataset, dims=(dataInRows ? 1 : 2)), maximum(dataset,dims=(dataInRows ? 1 : 2)) );
+#        mins[x]=minv
+#        maxs[x]=maxv
+#    end
+#    return (mins, maxs)
+#end
 
-function calculateZeroMeanNormalizationParameters(input::AbstractArray{<:Real,2})
-    means=zeros(1,size(input,2))
-    dts=zeros(1,size(input,2))
-    for x in 1:size(input,2)
-        meanv::Float32=0
-        for y in 1:size(input,1)
-            meanv=meanv+input[y,x]
-        end
 
-        means[x]=(meanv/size(input,1))
+calculateZeroMeanNormalizationParameters(dataset::AbstractArray{<:Real,2}; dataInRows=true) =
+    ( mean(dataset, dims=(dataInRows ? 1 : 2)), std(dataset, dims=(dataInRows ? 1 : 2)) );
 
-        for y in 1:size(input,1)
-            dts[x]=sqrt(((input[y,x])-means[x])^2/size(inputs,1))
-        end
-    end
-    return (means, dts)
-end
+    #Alternativa
+#function calculateZeroMeanNormalizationParameters(input::AbstractArray{<:Real,2})
+#    means=zeros(1,size(input,2))
+#    dts=zeros(1,size(input,2))
+#    for x in 1:size(input,2)
+#        meanv::Float32=0
+#        for y in 1:size(input,1)
+#            meanv=meanv+input[y,x]
+#        end
+#
+#        means[x]=(meanv/size(input,1))
 
-#Alternativa
-#calculateZeroMeanNormalizationParameters(dataset::Array{Float64,2}; dataInRows=true) =
-#    ( mean(dataset, dims=(dataInRows ? 1 : 2)), std(dataset, dims=(dataInRows ? 1 : 2)) );
+#        for y in 1:size(input,1)
+#            dts[x]=sqrt(((input[y,x])-means[x])^2/size(inputs,1))
+#        end
+#    end
+#    return (means, dts)
+#end
 
-# 4 versiones de la funcion para normalizar entre máximo y minimo:
+
+# 4 versiones de la función para normalizar entre máximo y minimo:
 # - Nos dan los parametros de normalizacion, y se quiere modificar el array de
 #entradas (el nombre de la funcion acaba en '!')
-
-function normalizeMinMax!(dataset::Array{Float64,2}, normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}}; dataInRows=true)
+function normalizeMinMax!(dataset::Array{<:Real,2}, normalizationParameters::NTuple{2, AbstractArray{<:Real,2}}; dataInRows=true)
     min = normalizationParameters[1];
     max = normalizationParameters[2];
     dataset .-= min;
@@ -100,13 +101,15 @@ function normalizeMinMax!(dataset::Array{Float64,2}, normalizationParameters::Tu
         dataset[vec(min.==max), :] .= 0;
     end
 end;
+
 # - No nos dan los parametros de normalizacion, y se quiere modificar el array
 #de entradas (el nombre de la funcion acaba en '!')
-normalizeMinMax!(dataset::Array{Float64,2}; dataInRows=true) =
+normalizeMinMax!(dataset::AbstractArray{<:Real,2}; dataInRows=true) =
     normalizeMinMax!(dataset, calculateMinMaxNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
+
 # - Nos dan los parametros de normalizacion, y no se quiere modificar el array
 #de entradas (se crea uno nuevo)
-function normalizeMinMax(dataset::Array{Float64,2},normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}}; dataInRows=true)
+function normalizeMinMax(dataset::AbstractArray{<:Real,2},normalizationParameters::NTuple{2, AbstractArray{<:Real,2}}; dataInRows=true)
     newDataset = copy(dataset);
     normalizeMinMax!(newDataset, normalizationParameters; dataInRows=dataInRows);
     return newDataset;
@@ -114,13 +117,14 @@ end;
 
 # - No nos dan los parametros de normalizacion, y no se quiere modificar el
 #array de entradas (se crea uno nuevo)
-normalizeMinMax(dataset::Array{Float64,2}; dataInRows=true) =
+normalizeMinMax(dataset::AbstractArray{<:Real,2}; dataInRows=true) =
     normalizeMinMax(dataset, calculateMinMaxNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
+
 
 # 4 versiones similares de la funcion para normalizar de media 0:
 # - Nos dan los parametros de normalizacion, y se quiere modificar el array de
 #entradas (el nombre de la funcion acaba en '!')
-function normalizeZeroMean!(dataset::Array{Float64,2}, normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}}; dataInRows=true)
+function normalizeZeroMean!(dataset::AbstractArray{<:Real,2}, normalizationParameters::NTuple{2, AbstractArray{<:Real,2}}; dataInRows=true)
     avg = normalizationParameters[1];
     stnd = normalizationParameters[2];
     dataset .-= avg;
@@ -132,26 +136,29 @@ function normalizeZeroMean!(dataset::Array{Float64,2}, normalizationParameters::
         dataset[vec(stnd.==0), :] .= 0;
     end
 end;
+
 # - No nos dan los parametros de normalizacion, y se quiere modificar el array
 #de entradas (el nombre de la funcion acaba en '!')
-normalizeZeroMean!(dataset::Array{Float64,2}; dataInRows=true) =
+normalizeZeroMean!(dataset::AbstractArray{<:Real,2}; dataInRows=true) =
     normalizeZeroMean!(dataset, calculateZeroMeanNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
-# - Nos dan los parametros de normalizacion, y no se quiere modificar el array
+
+    # - Nos dan los parametros de normalizacion, y no se quiere modificar el array
 #de entradas (se crea uno nuevo)
-function normalizeZeroMean(dataset::Array{Float64,2}, normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}};
+function normalizeZeroMean(dataset::AbstractArray{<:Real,2}, normalizationParameters::NTuple{2, AbstractArray{<:Real,2}};
     dataInRows=true)
     newDataset = copy(dataset);
     normalizeZeroMean!(newDataset, normalizationParameters; dataInRows=dataInRows); 
     return newDataset;
 end;
+
 # - No nos dan los parametros de normalizacion, y no se quiere modificar el
 #array de entradas (se crea uno nuevo)
-normalizeZeroMean(dataset::Array{Float64,2}; dataInRows=true) =
+normalizeZeroMean(dataset::AbstractArray{<:Real,2}; dataInRows=true) =
     normalizeZeroMean(dataset, calculateZeroMeanNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
 
 #Input: outputs (Salidas de un modelo con un patron por fila)
 #Output: outputsBoolean (Matriz de valores bool que indica la clasificación)
-function classifyOutputs(outputs::Array{Float64,2}; dataInRows::Bool=true, threshold::Float64=0.5)
+function classifyOutputs(outputs::AbstractArray{<:Real,2}; dataInRows::Bool=true, threshold::Float64=0.5)
     numOutputs = size(outputs, dataInRows ? 2 : 1);
     @assert(numOutputs!=2)
     if numOutputs==1
