@@ -1,5 +1,8 @@
-using Random
 using DelimitedFiles
+using Flux
+using Flux.Losses
+using Statistics
+using Random
 include("script2.jl")
 
 #Función para dividir bd en dos subconjuntos

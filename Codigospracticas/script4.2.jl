@@ -1,3 +1,19 @@
+using DelimitedFiles
+using Flux
+using Flux.Losses
+using Statistics
+
+#Próximas prácticas
+#outputs = Array{Float32,2}(undef, numInstances, numClasses);
+#for numClass in 1:numClasses
+#    model = fit(inputs, targets[:,[numClass]]);
+#    outputs[:,numClass] .= model(inputs);
+#end;
+#outputs = softmax(outputs')';
+#vmax = maximum(outputs, dims=2);
+#outputs = (outputs .== vmax);
+
+
 function confusionMatrix(outputs::Array{Bool,2}, targets::Array{Bool,2}; weighted::Bool=true)
     @assert(size(outputs)==size(targets));
     numClasses = size(targets,2);
@@ -59,33 +75,33 @@ function confusionMatrix(outputs::Array{Bool,2}, targets::Array{Bool,2}; weighte
     errorRate = 1 - acc;
     return (acc, errorRate, recall, specificity, precision, NPV, F1, confMatrix);
     end;
-   end;
-function confusionMatrix(outputs::Array{Any,1}, targets::Array{Any,1};
-    weighted::Bool=true)
+end;
+
+function confusionMatrix(outputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2}; weighted::Bool=true)
     # Comprobamos que todas las clases de salida esten dentro de las clases de las salidas deseadas
     @assert(all([in(output, unique(targets)) for output in outputs]));
     classes = unique(targets);
     # Es importante calcular el vector de clases primero y pasarlo como argumento a las 2 llamadas a oneHotEncoding para que el orden de las clases sea el mismo en ambas matrices
     return confusionMatrix(oneHotEncoding(outputs, classes),oneHotEncoding(targets, classes); weighted=weighted);
 end;
-   confusionMatrix(outputs::Array{Float64,2}, targets::Array{Bool,2};
-   weighted::Bool=true) = confusionMatrix(classifyOutputs(outputs), targets;
-   weighted=weighted);
+
+confusionMatrix(outputs::AbstractArray{<:Any,2}, targets::AbstarctArray{<:Any,2}; weighted::Bool=true) = confusionMatrix(classifyOutputs(outputs), targets; weighted=weighted);
+
+    #NO ES NECESARIO CREO
    # De forma similar a la anterior, añado estas funcion porque las RR.NN.AA. dan la salida como matrices de valores Float32 en lugar de Float64
    # Con estas funcion se pueden usar indistintamente matrices de Float32 o Float64
-   confusionMatrix(outputs::Array{Float32,2}, targets::Array{Bool,2};
-   weighted::Bool=true) = confusionMatrix(convert(Array{Float64,2}, outputs),
-   targets; weighted=weighted);
-   printConfusionMatrix(outputs::Array{Float32,2}, targets::Array{Bool,2};
-   weighted::Bool=true) = printConfusionMatrix(convert(Array{Float64,2}, outputs),
-   targets; weighted=weighted);
-   # Funciones auxiliares para visualizar por pantalla la matriz de confusion y las metricas que se derivan de ella
+confusionMatrix(outputs::Array{Float32,2}, targets::Array{Bool,2};
+   weighted::Bool=true) = confusionMatrix(convert(Array{Float64,2}, outputs), targets; weighted=weighted);
+
+printConfusionMatrix(outputs::Array{Float32,2}, targets::Array{Bool,2};
+   weighted::Bool=true) = printConfusionMatrix(convert(Array{Float64,2}, outputs), targets; weighted=weighted);
+
+# Funciones auxiliares para visualizar por pantalla la matriz de confusion y las metricas que se derivan de ella
 function printConfusionMatrix(outputs::Array{Bool,2}, targets::Array{Bool,2};weighted::Bool=true)
-    (acc, errorRate, recall, specificity, precision, NPV, F1, confMatrix) =
-   confusionMatrix(outputs, targets; weighted=weighted);
+    (acc, errorRate, recall, specificity, precision, NPV, F1, confMatrix) = confusionMatrix(outputs, targets; weighted=weighted);
     numClasses = size(confMatrix,1);
     writeHorizontalLine() = (for i in 1:numClasses+1 print("--------") end;
-   println(""); );
+    println(""); );
     writeHorizontalLine();
     print("\t| ");
 

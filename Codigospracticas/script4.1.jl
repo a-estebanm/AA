@@ -1,3 +1,8 @@
+using DelimitedFiles
+using Flux
+using Flux.Losses
+using Statistics
+
 function confusionMatrix(outputs::AbstractArray{Bool,1}, targets::AbstractArray{Bool,1})
     @assert(length(outputs)==length(targets));
     # Para calcular la precision y la tasa de error, se puede llamar a las funciones definidas en la practica 2
