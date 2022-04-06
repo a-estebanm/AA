@@ -14,7 +14,7 @@ ann = Chain(ann..., softmax );
 
 loss(in, targets) = Losses.crossentropy(ann(in), targets)
 
-learningRate=0.001
+#learningRate=0.001
 
 #Flux.train!(loss, params(ann), [(in, targets’)], ADAM(learningRate));
 
@@ -39,9 +39,9 @@ function OneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{
     end
 end
 
-oneHotEncoding(feature::Array{Any,1}) = oneHotEncoding(feature::Array{Any,1}, unique(feature));
+oneHotEncoding(feature::Array{<:Any,1}) = oneHotEncoding(unique(feature));
 
-oneHotEncoding(feature::Array{Bool,1}) = feature; #Usar reshape?
+oneHotEncoding(feature::Array{Bool,1}) = reshape(feature,1); #MIRAR ESTO
 
 print("\n\nEnd oneHotEncoding\n\n")
 
@@ -57,6 +57,10 @@ function calculateMinMaxNormalizationParameters(input::AbstractArray{<:Real,2})
     end
     return (mins, maxs)
 end
+
+#Alternativa:
+#calculateMinMaxNormalizationParameters(dataset::Array{Float64,2}; dataInRows=true) =
+#    ( minimum(dataset, dims=(dataInRows ? 1 : 2)), maximum(dataset,dims=(dataInRows ? 1 : 2)) );
 
 function calculateZeroMeanNormalizationParameters(input::AbstractArray{<:Real,2})
     means=zeros(1,size(input,2))
@@ -76,137 +80,74 @@ function calculateZeroMeanNormalizationParameters(input::AbstractArray{<:Real,2}
     return (means, dts)
 end
 
-print("\n\nEnd calculateParameters\n\n")
+#Alternativa
+#calculateZeroMeanNormalizationParameters(dataset::Array{Float64,2}; dataInRows=true) =
+#    ( mean(dataset, dims=(dataInRows ? 1 : 2)), std(dataset, dims=(dataInRows ? 1 : 2)) );
 
-function normalizeMinMax!(normMatrix::AbstractArray{<:Real,2}, param::NTuple{2, AbstractArray{<:Real,2}})
-
-end
-
-
-# Funciones para calcular los parametros de normalizacion y normalizar
-# Para calcular los parametros de normalizacion, segun la forma de normalizar
-#que se desee:
-calculateMinMaxNormalizationParameters(dataset::Array{Float64,2};
-dataInRows=true) =
-( minimum(dataset, dims=(dataInRows ? 1 : 2)), maximum(dataset,
-dims=(dataInRows ? 1 : 2)) );
-calculateZeroMeanNormalizationParameters(dataset::Array{Float64,2};
-dataInRows=true) =
-( mean(dataset, dims=(dataInRows ? 1 : 2)), std(dataset, dims=(dataInRows ?
-1 : 2)) );
-# 4 versiones de la funcion para normalizar entre 0 y 1:
+# 4 versiones de la funcion para normalizar entre máximo y minimo:
 # - Nos dan los parametros de normalizacion, y se quiere modificar el array de
 #entradas (el nombre de la funcion acaba en '!')
+
+function normalizeMinMax!(dataset::Array{Float64,2}, normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}}; dataInRows=true)
+    min = normalizationParameters[1];
+    max = normalizationParameters[2];
+    dataset .-= min;
+    dataset ./= (max .- min);
+    # Si hay algun atributo en el que todos los valores son iguales, se pone a 0
+    if (dataInRows)
+        dataset[:, vec(min.==max)] .= 0;
+    else
+        dataset[vec(min.==max), :] .= 0;
+    end
+end;
 # - No nos dan los parametros de normalizacion, y se quiere modificar el array
 #de entradas (el nombre de la funcion acaba en '!')
+normalizeMinMax!(dataset::Array{Float64,2}; dataInRows=true) =
+    normalizeMinMax!(dataset, calculateMinMaxNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
 # - Nos dan los parametros de normalizacion, y no se quiere modificar el array
 #de entradas (se crea uno nuevo)
+function normalizeMinMax(dataset::Array{Float64,2},normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}}; dataInRows=true)
+    newDataset = copy(dataset);
+    normalizeMinMax!(newDataset, normalizationParameters; dataInRows=dataInRows);
+    return newDataset;
+end;
+
 # - No nos dan los parametros de normalizacion, y no se quiere modificar el
 #array de entradas (se crea uno nuevo)
-function normalizeMinMax!(dataset::Array{Float64,2},
-normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}};
-dataInRows=true)
-min = normalizationParameters[1];
-max = normalizationParameters[2];
-dataset .-= min;
-dataset ./= (max .- min);
-# Si hay algun atributo en el que todos los valores son iguales, se pone a 0
-if (dataInRows)
-dataset[:, vec(min.==max)] .= 0;
-else
-dataset[vec(min.==max), :] .= 0;
-end
-end;
-normalizeMinMax!(dataset::Array{Float64,2}; dataInRows=true) =
-normalizeMinMax!(dataset, calculateMinMaxNormalizationParameters(dataset;
-dataInRows=dataInRows); dataInRows=dataInRows);
-function normalizeMinMax(dataset::Array{Float64,2},
-normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}};
-dataInRows=true)
-
-newDataset = copy(dataset);
-normalizeMinMax!(newDataset, normalizationParameters;
-dataInRows=dataInRows);
-return newDataset;
-end;
 normalizeMinMax(dataset::Array{Float64,2}; dataInRows=true) =
-normalizeMinMax(dataset, calculateMinMaxNormalizationParameters(dataset;
-dataInRows=dataInRows); dataInRows=dataInRows);
+    normalizeMinMax(dataset, calculateMinMaxNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
+
 # 4 versiones similares de la funcion para normalizar de media 0:
 # - Nos dan los parametros de normalizacion, y se quiere modificar el array de
 #entradas (el nombre de la funcion acaba en '!')
+function normalizeZeroMean!(dataset::Array{Float64,2}, normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}}; dataInRows=true)
+    avg = normalizationParameters[1];
+    stnd = normalizationParameters[2];
+    dataset .-= avg;
+    dataset ./= stnd;
+    # Si hay algun atributo en el que todos los valores son iguales, se pone a 0
+    if (dataInRows)
+        dataset[:, vec(stnd.==0)] .= 0;
+    else
+        dataset[vec(stnd.==0), :] .= 0;
+    end
+end;
 # - No nos dan los parametros de normalizacion, y se quiere modificar el array
 #de entradas (el nombre de la funcion acaba en '!')
+normalizeZeroMean!(dataset::Array{Float64,2}; dataInRows=true) =
+    normalizeZeroMean!(dataset, calculateZeroMeanNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
 # - Nos dan los parametros de normalizacion, y no se quiere modificar el array
 #de entradas (se crea uno nuevo)
+function normalizeZeroMean(dataset::Array{Float64,2}, normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}};
+    dataInRows=true)
+    newDataset = copy(dataset);
+    normalizeZeroMean!(newDataset, normalizationParameters; dataInRows=dataInRows); 
+    return newDataset;
+end;
 # - No nos dan los parametros de normalizacion, y no se quiere modificar el
 #array de entradas (se crea uno nuevo)
-function normalizeZeroMean!(dataset::Array{Float64,2},
-normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}};
-dataInRows=true)
-avg = normalizationParameters[1];
-stnd = normalizationParameters[2];
-dataset .-= avg;
-dataset ./= stnd;
-# Si hay algun atributo en el que todos los valores son iguales, se pone a 0
-if (dataInRows)
-dataset[:, vec(stnd.==0)] .= 0;
-else
-dataset[vec(stnd.==0), :] .= 0;
-end
-end;
-normalizeZeroMean!(dataset::Array{Float64,2}; dataInRows=true) =
-normalizeZeroMean!(dataset, calculateZeroMeanNormalizationParameters(dataset;
-dataInRows=dataInRows); dataInRows=dataInRows);
-function normalizeZeroMean(dataset::Array{Float64,2},
-normalizationParameters::Tuple{Array{Float64,2},Array{Float64,2}};
-dataInRows=true)
-newDataset = copy(dataset);
-normalizeZeroMean!(newDataset, normalizationParameters;
-dataInRows=dataInRows);
-return newDataset;
-end;
 normalizeZeroMean(dataset::Array{Float64,2}; dataInRows=true) =
-normalizeZeroMean(dataset, calculateZeroMeanNormalizationParameters(dataset;
-dataInRows=dataInRows); dataInRows=dataInRows);
-
-# Parametros principales de la RNA y del proceso de entrenamiento
-topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
-learningRate = 0.01; # Tasa de aprendizaje
-numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
-# Cargamos el dataset
-dataset = readdlm("iris.data",',');
-# Preparamos las entradas y las salidas deseadas
-inputs = convert(Array{Float64,2}, dataset[:,1:4]);
-targets = oneHotEncoding(dataset[:,5]);
-# Comprobamos que las funciones de normalizar funcionan correctamente
-# Normalizacion entre maximo y minimo
-newInputs = normalizeMinMax(inputs);
-@assert(all(minimum(newInputs, dims=1) .== 0));
-@assert(all(maximum(newInputs, dims=1) .== 1));
-# Normalizacion de media 0. en este caso, debido a redondeos, la media y
-#desviacion tipica de cada variable no van a dar exactamente 0 y 1
-#respectivamente. Por eso las comprobaciones se hacen de esta manera
-newInputs = normalizeZeroMean(inputs);
-@assert(all(abs.(mean(newInputs, dims=1)) .<= 1e-10));
-@assert(all(abs.(std( newInputs, dims=1)).-1 .<= 1e-10));
-# Finalmente, normalizamos las entradas entre maximo y minimo:
-normalizeMinMax!(inputs);
-# Y creamos y entrenamos la RNA con los parametros dados
-(ann, trainingLosses, trainingAccuracies) = trainClassANN(topology, inputs,
-targets; maxEpochs=numMaxEpochs, learningRate=learningRate);
-
-
-
-
-
-
-
-
-
-
-
-
+    normalizeZeroMean(dataset, calculateZeroMeanNormalizationParameters(dataset; dataInRows=dataInRows); dataInRows=dataInRows);
 
 #Input: outputs (Salidas de un modelo con un patron por fila)
 #Output: outputsBoolean (Matriz de valores bool que indica la clasificación)
@@ -295,16 +236,19 @@ accuracy(outputs::Array{Float32,1}, targets::Array{Bool,1}; threshold::Float64=0
 accuracy(outputs::Array{Float32,2}, targets::Array{Bool,2}; dataInRows::Bool=true) = 
     accuracy(Float64.(outputs), targets; dataInRows=dataInRows);
 
-#Función crear ANN de clasificación
-#Input:
-#Output: 
+#Función crear RNA de clasificación
+#Input: Nº neuronas entrada, nº neuronas salida y topología (nº capas ocultas)
+#Output: RNA de clasificación
 function buildClassANN(numInputs::Int64, topology::Array{Int64,1}, numOutputs::Int64)
+    #Crear RNA vacía
     ann=Chain();
     numInputsLayer = numInputs;
+    #Crear capas ocultas en caso de haberlas
     for numOutputLayers = topology
         ann = Chain(ann..., Dense(numInputsLayer, numOutputLayers, σ));
         numInputsLayer = numOutputLayers;
     end;
+    #Añadir capa final
     if (numOutputs == 1)
         ann = Chain(ann..., Dense(numInputsLayer, 1, σ));
     else
@@ -314,7 +258,13 @@ function buildClassANN(numInputs::Int64, topology::Array{Int64,1}, numOutputs::I
     return ann;
 end;
 
-function trainClassANN(topology::Array{Int64,1}, inputs::Array{Float64,2}, targets::Array{Bool,2}; maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1)
+#Función crear y entrenar una RNA de clasificación
+#Inputs:topology (capas ocultas), dataset (matriz entradas y salidas deseadas)
+function trainClassANN(topology::Array{Int64,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.1)
+    
+    inputs=dataset[1];
+    targets=dataset[2];
+    
     # Se supone que tenemos cada patron en cada fila
     # Comprobamos que el numero de filas (numero de patrones) coincide
     @assert(size(inputs,1)==size(targets,1));
@@ -328,7 +278,7 @@ function trainClassANN(topology::Array{Int64,1}, inputs::Array{Float64,2}, targe
     trainingAccuracies = Float64[];
     # Empezamos en el ciclo 0
     numEpoch = 0;
-    # Una funcion util para calcular los resultados y mostrarlos por pantalla
+    # Función para calcular los resultados y mostrarlos por pantalla
     function calculateMetrics()
         # Calculamos el loss. Para ello hay que pasar las matrices traspuestas(cada patron en una columna)
         trainingLoss = loss(inputs', targets');
@@ -363,11 +313,48 @@ function trainClassANN(topology::Array{Int64,1}, inputs::Array{Float64,2}, targe
         
         # Calculamos las metricas en este ciclo
         (trainingLoss, trainingAccuracy) = calculateMetrics()
-        # y almacenamos el valor de loss y precision en este ciclo
+        # Almacenamos el valor de loss y precisión en este ciclo
         push!(trainingLosses, trainingLoss);
         push!(trainingAccuracies, trainingAccuracy);
     end;
     return (ann, trainingLosses, trainingAccuracies);
 end;
+
+trainClassANN(topology::Array{Int64,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}}, maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.1) =
+    trainClassANN(topology, (dataset[1], reshape(dataset[2], 1)), maxEpochs, minLoss, learningRate) 
+
+
+
+
+# Parametros principales de la RNA y del proceso de entrenamiento
+topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
+learningRate = 0.01; # Tasa de aprendizaje
+numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
+# Cargamos el dataset
+dataset = readdlm("AA\\Codigospracticas\\iris.data",',');
+# Preparamos las entradas y las salidas deseadas
+inputs = convert(Array{Float64,2}, dataset[:,1:4]);
+targets = oneHotEncoding(dataset[:,5]);
+# Comprobamos que las funciones de normalizar funcionan correctamente
+# Normalizacion entre maximo y minimo
+newInputs = normalizeMinMax(inputs);
+@assert(all(minimum(newInputs, dims=1) .== 0));
+@assert(all(maximum(newInputs, dims=1) .== 1));
+# Normalizacion de media 0. en este caso, debido a redondeos, la media y
+#desviacion tipica de cada variable no van a dar exactamente 0 y 1
+#respectivamente. Por eso las comprobaciones se hacen de esta manera
+newInputs = normalizeZeroMean(inputs);
+@assert(all(abs.(mean(newInputs, dims=1)) .<= 1e-10));
+@assert(all(abs.(std( newInputs, dims=1)).-1 .<= 1e-10));
+# Finalmente, normalizamos las entradas entre maximo y minimo:
+normalizeMinMax!(inputs);
+# Y creamos y entrenamos la RNA con los parametros dados
+(ann, trainingLosses, trainingAccuracies) = trainClassANN(topology, inputs, targets; maxEpochs=numMaxEpochs, learningRate=learningRate);
+
+
+
+
+
+
 
 print("\n\nEnd Practice Two\n\n")
