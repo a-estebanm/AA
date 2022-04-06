@@ -10,11 +10,9 @@ function holdOut(N::Int, P::Float64)
     indices = randperm(N);
     numTrainingInstances = Int(round(N*(1-P)));
 
-    @assert (indices[1:numTrainingInstances].length+
-            indices[numTrainingInstances+1:end].length)=N;      
+    @assert (indices[1:numTrainingInstances].length+ indices[numTrainingInstances+1:end].length)=N;      
 
-    return (indices[1:numTrainingInstances],
-            indices[numTrainingInstances+1:end]);
+    return (indices[1:numTrainingInstances], indices[numTrainingInstances+1:end]);
 end
 
 #Función para dividir bd en tres subconjuntos
@@ -28,24 +26,24 @@ function holdOut(N::Int, Pval::Float64, Ptest::Float64)
     (trainingValidationIndices, testIndices) = holdOut(N, Ptest);
     #Entrenamiento y validación
     (trainingIndices, validationIndices) =
-    holdOut(length(trainingValidationIndices),
-    Pval*N/length(trainingValidationIndices))
+    holdOut(length(trainingValidationIndices), Pval*N/length(trainingValidationIndices))
 
     @assert (trainingValidationIndices[trainingIndices].length+
             trainingValidationIndices[validationIndices].length+
             testIndices.length)=N;      
 
-    return (trainingValidationIndices[trainingIndices],
-    trainingValidationIndices[validationIndices], testIndices);
+    return (trainingValidationIndices[trainingIndices],trainingValidationIndices[validationIndices], testIndices);
 end;
 
 # Funcion para entrenar RR.NN.AA. con conjuntos de entrenamiento y test
 # Es la funcion anterior, modificada para calcular errores en el conjunto de test
-function trainClassANN(topology::Array{Int64,1},
-    trainingInputs::Array{Float64,2}, trainingTargets::Array{Bool,2},
-    testInputs::Array{Float64,2}, testTargets::Array{Bool,2};
-    maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1,
-    showText::Bool=false)
+function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
+    test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}}; maxEpochs::Int64=1000, minLoss::Float64=0.0,
+    learningRate::Float64=0.1, showText::Bool=false)
+    trainingInputs=training[1];
+    trainingTargets=training[2];
+    testInputs=test[1];
+    testTargets=test[2];
     # Se supone que tenemos cada patron en cada fila
     # Comprobamos que el numero de filas (numero de patrones) coincide tanto en
     # entrenamiento como en test
@@ -114,15 +112,23 @@ function trainClassANN(topology::Array{Int64,1},
 
     return (ann, trainingLosses, testLosses, trainingAccuracies, testAccuracies);
 end;
+
 # Funcion para entrenar RR.NN.AA. con conjuntos de entrenamiento, validacion y test
 # Es la funcion anterior, modificada para calcular errores en el conjunto de
 # validacion, y parar el entrenamiento si es necesario
-function trainClassANN(topology::Array{Int64,1},
-    trainingInputs::Array{Float64,2}, trainingTargets::Array{Bool,2},
-    validationInputs::Array{Float64,2}, validationTargets::Array{Bool,2},
-    testInputs::Array{Float64,2}, testTargets::Array{Bool,2};
+function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
+    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}};
+    test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}};
     maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1,
     maxEpochsVal::Int64=6, showText::Bool=false)
+
+    trainingInputs=training[1];
+    trainingTargets=training[2];
+    testInputs=test[1];
+    testTargets=test[2];
+    validationInputs=validation[1];
+    validationTargets=validation[2];
+
     # Se supone que tenemos cada patron en cada fila
     # Comprobamos que el numero de filas (numero de patrones) coincide tanto en entrenamiento como en validation como test
     @assert(size(trainingInputs,1)==size(trainingTargets,1));
@@ -216,6 +222,15 @@ function trainClassANN(topology::Array{Int64,1},
     end;
     return (bestANN, trainingLosses, validationLosses, testLosses, trainingAccuracies, validationAccuracies, testAccuracies);
 end;
+
+trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}},
+    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}};
+    test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}};
+    maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1,
+    maxEpochsVal::Int64=6, showText::Bool=false) = 
+    trainClassANN(topology, (training[1], reshape(training[2], 1)), (validation[1], reshape(validation[2], 1)), (test[1], reshape(test[2], 1)), maxEpochs, minLoss, learningRate) 
+
+
 # -------------------------------------------------------------------------
 # Ejemplo de uso de estas funciones, con conjuntos de entrenamiento y test:
 # Parametros principales de la RNA y del proceso de entrenamiento
@@ -243,10 +258,8 @@ normalizationParams = calculateMinMaxNormalizationParameters(trainingInputs);
 normalizeMinMax!(trainingInputs, normalizationParams);
 normalizeMinMax!(testInputs, normalizationParams);
 # Y creamos y entrenamos la RNA con los parametros dados
-(ann, trainingLosses, trainingAccuracies) = trainClassANN(topology,
-trainingInputs, trainingTargets,
-testInputs, testTargets;
-maxEpochs=numMaxEpochs, learningRate=learningRate, showText=true);
+(ann, trainingLosses, trainingAccuracies) = trainClassANN(topology,(trainingInputs, trainingTargets),(testInputs, testTargets);
+maxEpochs=numMaxEpochs, learningRate=learningRate, maxEpochsVal=maxEpochsVal, showText=true);
 # -------------------------------------------------------------------------
 # Ejemplo de uso de estas funciones, con conjuntos de entrenamiento, validacion y test:
 # Parametros principales de la RNA y del proceso de entrenamiento
@@ -276,10 +289,7 @@ testTargets = targets[testIndices,:];
 
 # Y creamos y entrenamos la RNA con los parametros dados
 (ann, trainingLosses, trainingAccuracies) = trainClassANN(topology,
-trainingInputs, trainingTargets,
-validationInputs, validationTargets,
-testInputs, testTargets;
-maxEpochs=numMaxEpochs, learningRate=learningRate,
-maxEpochsVal=maxEpochsVal, showText=true);
+    (trainingInputs, trainingTargets), (validationInputs, validationTargets), (testInputs, testTargets);
+    maxEpochs=numMaxEpochs, learningRate=learningRate, maxEpochsVal=maxEpochsVal, showText=true);
 
 print("\n\nEnd Practice Three\n\n")
