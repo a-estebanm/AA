@@ -19,23 +19,15 @@ loss(in, targets) = Losses.crossentropy(ann(in), targets)
 #Flux.train!(loss, params(ann), [(in, targets’)], ADAM(learningRate));
 
 function OneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{<:Any,1})
-    if(size(classes)==2) #First Case
-        aux=Array{Bool}
-        for x in size(classes, 1)
-            aux[x]=(classes[x].==feature[x])
+    num_class = length(classes)
+    if (num_class == 2)        # Si solo hay dos clases, se devuelve una matriz con una columna
+        cat_targets = Array{Bool,2}(undef, size(targets,1), 1);
+        cat_targets[:,1] .= (targets.==clases[1])   
+    else
+        cat_targets = Array{Bool,2}(undef, size(targets,1), num_class)      
+        for num = 1:num_class            
+            cat_targets[:,num_class] .= (targets.==clases[num])     
         end
-        reshape(aux,1,:)
-        return aux
-
-    elseif(size(classes)>2) #Second Case
-        aux=Array{Bool,2}
-        reshape(aux, size(classes,1), size(classes,2))
-        for x in size(classes,2)
-            aux[:,x]=(classes[x].==feature[x])
-        end
-        return aux
-
-    else print("ERROR") #Error
     end
 end
 

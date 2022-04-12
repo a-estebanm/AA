@@ -1,6 +1,6 @@
-using DelimitedFiles
+	using DelimitedFiles
 
-dataset = readdlm("AA\\Codigospracticas\\iris.data",','); #Puede que haya que pillar un Path en vez de esto
+dataset = readdlm("Codigospracticas/iris.data",','); #Puede que haya que pillar un Path en vez de esto
 
 inputs=dataset[:,1:4];
 targets=dataset[:,5];
