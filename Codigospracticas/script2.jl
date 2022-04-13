@@ -5,35 +5,44 @@ using Statistics
 
 include("script1.jl")
 
-in=transpose(norm_inputs)
+copy(norm_inputs)
+inp=transpose(norm_inputs)
 
 ann = Chain();
 ann = Chain(ann..., Dense(9, 5, σ) );
 ann = Chain(ann..., Dense(5, 3, identity) );
 ann = Chain(ann..., softmax );
 
-loss(in, targets) = Losses.crossentropy(ann(in), targets)
+loss(inp, targets) = Losses.crossentropy(ann(inp), targets)
 
 #learningRate=0.001
 
 #Flux.train!(loss, params(ann), [(in, targets’)], ADAM(learningRate));
 
 function OneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{<:Any,1})
-    num_class = length(classes)
-    if (num_class == 2)        # Si solo hay dos clases, se devuelve una matriz con una columna
-        cat_targets = Array{Bool,2}(undef, size(targets,1), 1);
-        cat_targets[:,1] .= (targets.==clases[1])   
-    else
-        cat_targets = Array{Bool,2}(undef, size(targets,1), num_class)      
-        for num = 1:num_class            
-            cat_targets[:,num_class] .= (targets.==clases[num])     
+    if(size(classes)==2) #First Case
+        aux=Array{Bool}
+        for x in size(classes, 1)
+            aux[x]=(classes[x].==feature[x])
         end
+        reshape(aux,1,:)
+        return aux
+
+    elseif(size(classes)>2) #Second Case
+        aux=Array{Bool,2}
+        reshape(aux, size(classes,1), size(classes,2))
+        for x in size(classes,2)
+            aux[:,x]=(classes[x].==feature[x])
+        end
+        return aux
+
+    else print("ERROR") #Error
     end
 end
 
-oneHotEncoding(feature::Array{<:Any,1}) = oneHotEncoding(unique(feature));
+oneHotEncoding(feature::AbstractArray{<:Any,1}) = oneHotEncoding(feature::AbstractArray{<:Any,1},unique(feature));
 
-oneHotEncoding(feature::Array{Bool,1}) = reshape(feature,1); #MIRAR ESTO
+oneHotEncoding(feature::AbstractArray{Bool,1}) = reshape(feature,1); #MIRAR ESTO
 
 print("\n\nEnd oneHotEncoding\n\n")
 
@@ -330,10 +339,11 @@ topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
 learningRate = 0.01; # Tasa de aprendizaje
 numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
 # Cargamos el dataset
-dataset = readdlm("AA\\Codigospracticas\\iris.data",',');
+dataset = readdlm("Codigospracticas\\iris.data",',');
 # Preparamos las entradas y las salidas deseadas
 inputs = convert(Array{Float64,2}, dataset[:,1:4]);
-targets = oneHotEncoding(dataset[:,5]);
+targets = convert(AbstractArray{Any,1}, dataset[:,5])
+targets = oneHotEncoding(targets);
 # Comprobamos que las funciones de normalizar funcionan correctamente
 # Normalizacion entre maximo y minimo
 newInputs = normalizeMinMax(inputs);
