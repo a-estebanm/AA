@@ -13,7 +13,7 @@ function holdOut(N::Int, P::Float64)
     indices = randperm(N);
     numTrainingInstances = Int(round(N*(1-P)));
 
-    @assert (indices[1:numTrainingInstances].length+ indices[numTrainingInstances+1:end].length)=N;      
+    @assert (size(indices[1:numTrainingInstances],1) + size(indices[numTrainingInstances+1:end]),1)=N;      
 
     return (indices[1:numTrainingInstances], indices[numTrainingInstances+1:end]);
 end
@@ -33,7 +33,7 @@ function holdOut(N::Int, Pval::Float64, Ptest::Float64)
 
     @assert (trainingValidationIndices[trainingIndices].length+
             trainingValidationIndices[validationIndices].length+
-            testIndices.length)=N;      
+            testIndices.length)=N;
 
     return (trainingValidationIndices[trainingIndices],trainingValidationIndices[validationIndices], testIndices);
 end;
@@ -72,7 +72,7 @@ function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<
         trainingLoss = loss(trainingInputs', trainingTargets');
         testLoss = loss(testInputs', testTargets');
 
-        # Calculamos la salida de la RNA en entrenamiento y test. Para ello hay que pasar la matriz de entradas traspuesta (cada patron en una columna). 
+        # Calculamos la salida de la RNA en entrenamiento y test. Para ello hay que pasar la matriz de entradas traspuesta (cada patron en una columna).
         # La matriz de salidas tiene un patron en cada columna
         trainingOutputs = ann(trainingInputs');
         testOutputs = ann(testInputs');
@@ -163,7 +163,7 @@ function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<
         validationLoss = loss(validationInputs', validationTargets');
         testLoss = loss(testInputs', testTargets');
 
-        # Calculamos la salida de la RNA en entrenamiento y test. Para ello hay que pasar la matriz de entradas traspuesta (cada patron en una columna). 
+        # Calculamos la salida de la RNA en entrenamiento y test. Para ello hay que pasar la matriz de entradas traspuesta (cada patron en una columna).
         # La matriz de salidas tiene un patron en cada columna
         trainingOutputs = ann(trainingInputs');
         validationOutputs = ann(validationInputs');
@@ -230,8 +230,8 @@ trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},
     validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}};
     test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}};
     maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1,
-    maxEpochsVal::Int64=6, showText::Bool=false) = 
-    trainClassANN(topology, (training[1], reshape(training[2], 1)), (validation[1], reshape(validation[2], 1)), (test[1], reshape(test[2], 1)), maxEpochs, minLoss, learningRate) 
+    maxEpochsVal::Int64=6, showText::Bool=false) =
+    trainClassANN(topology, (training[1], reshape(training[2], 1)), (validation[1], reshape(validation[2], 1)), (test[1], reshape(test[2], 1)), maxEpochs, minLoss, learningRate)
 
 
 # -------------------------------------------------------------------------

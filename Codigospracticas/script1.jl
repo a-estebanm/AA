@@ -1,6 +1,7 @@
-	using DelimitedFiles
 
-dataset = readdlm("Codigospracticas/iris.data",','); #Puede que haya que pillar un Path en vez de esto
+using DelimitedFiles
+
+dataset = readdlm("iris.data",','); #Puede que haya que pillar un Path en vez de esto
 
 inputs=dataset[:,1:4];
 targets=dataset[:,5];
@@ -12,11 +13,11 @@ clases=unique(targets)
 num_class = length(clases)
 if (num_class == 2)        # Si solo hay dos clases, se devuelve una matriz con una columna
 	cat_targets = Array{Bool,2}(undef, size(targets,1), 1);
-	cat_targets[:,1] .= (targets.==clases[1])   
+	cat_targets[:,1] .= (targets.==clases[1])
 else
-	cat_targets = Array{Bool,2}(undef, size(targets,1), num_class)      
-	for num = 1:num_class            
-		cat_targets[:,num_class] .= (targets.==clases[num])     
+	cat_targets = Array{Bool,2}(undef, size(targets,1), num_class)
+	for num = 1:num_class
+		cat_targets[:,num_class] .= (targets.==clases[num])
 	end
 end
 
