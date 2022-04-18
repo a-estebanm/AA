@@ -11,7 +11,7 @@ function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
     return matrix;
 end;
 
-function main() 
+function displayStats()
     if (!occursin("BD",pwd())) 
         cd("BD")
     end
@@ -48,6 +48,40 @@ function main()
 
 end
 
-main()
+function countPictures(carpetas::Vector{String})
+    photoCounter = 0
+    for estilo in carpetas
+        fotos = readdir(estilo)
+        for foto in fotos
+            photoCounter += 1
+        end
+    end
+    return photoCounter
+end
+
+function getInputs()
+    if (!occursin("BD",pwd())) 
+        cd("BD")
+    end
+    carpetas = readdir()
+    photosNum = countPictures(carpetas)
+    n_estilos = length(readdir())
+    colors = Array{Any,2}(undef, 3, photosNum)
+    aux = 0
+    for estilo in carpetas
+        fotos = readdir(estilo)
+        for foto in fotos
+            aux += 1
+            img = load(string(estilo,"/",foto))
+            colors[1,aux] = mean(red.(img))
+            colors[2,aux] = mean(blue.(img))
+            colors[3,aux] = mean(green.(img))
+        end
+    end
+    return colors
+end
+
+#matrix = getInputs()
+#print(matrix)
 
 
