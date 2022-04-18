@@ -66,7 +66,7 @@ function getInputs()
     carpetas = readdir()
     photosNum = countPictures(carpetas)
     n_estilos = length(readdir())
-    colors = Array{Any,2}(undef, 4, photosNum)
+    colors = Array{Any,2}(undef, 3, photosNum)
     aux = 0
     for estilo in carpetas
         fotos = readdir(estilo)
@@ -76,13 +76,12 @@ function getInputs()
             colors[1,aux] = mean(red.(img))
             colors[2,aux] = mean(blue.(img))
             colors[3,aux] = mean(green.(img))
-            colors[4,aux] = estilo
         end
     end
     return colors
 end
 
-matrix = getInputs()
-print(matrix[:,1])
+#matrix = getInputs()
+#print(matrix)
 
 
