@@ -1159,7 +1159,7 @@ end;
     numNeighbors = 3;
 
     (dataset, target) = loadTrainingDataset(); #necesito ayuda para convertir los inputs
-    inputs = dataset;
+    inputs =convert(Array{Float64,2}, dataset');
     #inputs = reduce(vcat,dataset);
     targets = convert(Array{Any,1}, target);
 
