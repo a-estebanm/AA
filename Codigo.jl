@@ -1,3 +1,4 @@
+
 using FileIO;
 using DelimitedFiles;
 using Statistics
@@ -554,17 +555,6 @@ end;
 #load image dataset functions
 
 # Functions that allow the conversion from images to Float64 arrays
-imageToGrayArray(image::Array{RGB{Normed{UInt8,8}},2}) =
-    convert(Array{Float64,2}, gray.(Gray.(image)));
-imageToGrayArray(image::Array{RGB{Normed{UInt8,8}},2}) = imageToGrayArray(RGB.(image));
-function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
-    matrix = Array{Float64,3}(undef, size(image, 1), size(image, 2), 3)
-    matrix[:, :, 1] = convert(Array{Float64,2}, red.(image))
-    matrix[:, :, 2] = convert(Array{Float64,2}, green.(image))
-    matrix[:, :, 3] = convert(Array{Float64,2}, blue.(image))
-    return matrix
-end;
-imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2}) = imageToColorArray(RGB.(image));
 
 # Some functions to display an image stored as Float64 matrix
 # Overload the existing display function, either for graysacale or color images
@@ -614,191 +604,7 @@ function loadFolderImages(folderName::String)
     return images
 end;
 
-function processImage(imagen::Array{RGB{Normed{UInt8,8}},2})
-    value = 0
-    #imagen = load("base_bp_bb.png"); display(imagen);
-    #imagen = load("white.png");
-    #imagen = imageToColorArray(imagenA)
 
-    # Vamos a detectar los objetos rojos
-    #  Aquellos cuyo valor de rojo es superior en cierta cantidad al valor de verde y azul
-    # Definimos en que cantidad queremos que sea mayor
-    diferenciaRojoVerde = 0.3
-    diferenciaRojoAzul = 0.3
-    canalRojo = red.(imagen)
-    canalVerde = green.(imagen)
-    canalAzul = blue.(imagen)
-    matrizBooleana =
-        (canalRojo .> (canalVerde .+ diferenciaRojoVerde)) .&
-        (canalRojo .> (canalAzul .+ diferenciaRojoAzul))
-    # Mostramos esta matriz booleana para ver que objetos ha encontrado
-
-    # Esto se podria haber hecho, de forma similar, con el siguiente codigo, definiendo primero la funcion a aplicar en todos los pixeles:
-    #esPixelRojo(pixel::RGBA) = (pixel.r > pixel.g + diferenciaRojoVerde) && (pixel.r > pixel.b + diferenciaRojoAzul);
-    esPixelRojo(pixel::RGB) = (pixel.r < 0.3) && (pixel.g < 0.3) && (pixel.b < 0.3)
-    # Y despues aplicando esa funcion a toda la imagen haciendo un broadcast:
-    matrizBooleana = esPixelRojo.(imagen)
-    #println(size(imagen));
-    parameter = size(imagen)
-    sec1 =  parameter[1] ÷ 4;
-    sec11= 2*(parameter[1] ÷ 2);
-    sec2 =   (parameter[2] ÷ 2);
-    sec22 =  3*(parameter[1] ÷ 4);
-    imagen1 = augment(imagen, Crop(1:sec1, 1:parameter[2]));
-    imagen2 = augment(imagen, Crop(1:sec1, 1:sec2));
-    imagen3 = augment(imagen, Crop(sec22:parameter[1], 1:parameter[2]));
-    matrizBooleana1 = esPixelRojo.(imagen1)
-    matrizBooleana2 = esPixelRojo.(imagen2)
-    matrizBooleana3 = esPixelRojo.(imagen3)
-    # Aplicamos esta funcion a la matriz booleana (imagen umbralizada) que construimos antes:
-    labelArray = ImageMorphology.label_components(matrizBooleana)
-    labelArray1 = ImageMorphology.label_components(matrizBooleana1)
-    labelArray2 = ImageMorphology.label_components(matrizBooleana2)
-    labelArray3 = ImageMorphology.label_components(matrizBooleana3)
-    # Calculamos los tamaños
-    tamanos = component_lengths(labelArray)
-    tamanos1 = component_lengths(labelArray1)
-    tamanos2 = component_lengths(labelArray2)
-    tamanos3 = component_lengths(labelArray3)
-    # Que etiquetas son de objetos demasiado pequeños (30 pixeles o menos):
-    etiquetasEliminar = findall(tamanos .<= 10*(parameter[1])) .- 1 # Importate el -1, porque la primera etiqueta es la 0
-    etiquetasEliminar1 = findall(tamanos1 .<= 3*(parameter[1]/2)) .- 1 # Importate el -1, porque la primera etiqueta es la 0
-    etiquetasEliminar2 = findall(tamanos2 .<= 3*(parameter[1]/2)) .- 1 # Importate el -1, porque la primera etiqueta es la 0
-    etiquetasEliminar3 = findall(tamanos3 .<= 3*(parameter[1]/2)) .- 1 # Importate el -1, porque la primera etiqueta es la 0
-    # Se construye otra vez la matriz booleana, a partir de la matriz de etiquetas, pero eliminando las etiquetas indicadas
-    # Para hacer esto, se hace un bucle sencillo en el que se itera por cada etiqueta
-    #  Esto se realiza de forma sencilla con la siguiente linea
-    matrizBooleana =
-        [!in(etiqueta, etiquetasEliminar) && (etiqueta != 0) for etiqueta in labelArray]
-
-    matrizBooleana1 =
-        [!in(etiqueta, etiquetasEliminar1) && (etiqueta != 0) for etiqueta in labelArray1]
-
-    matrizBooleana2 =
-        [!in(etiqueta, etiquetasEliminar2) && (etiqueta != 0) for etiqueta in labelArray2]
-
-    matrizBooleana3 =
-        [!in(etiqueta, etiquetasEliminar3) && (etiqueta != 0) for etiqueta in labelArray3]
-
-    # Con esos objetos rojos "grandes", se toman de nuevo las etiquetas
-    labelArray = ImageMorphology.label_components(matrizBooleana)
-    labelArray1 = ImageMorphology.label_components(matrizBooleana1)
-    labelArray2 = ImageMorphology.label_components(matrizBooleana2)
-    labelArray3 = ImageMorphology.label_components(matrizBooleana3)
-    # Cuantos objetos se han detectado:
-
-    # Vamos a situar el centroide de estos objetos en la imagen umbralizada, poniéndolo en color rojo
-    # Por tanto, hay que construir una imagen en color:
-    imagenObjetos = RGB.(matrizBooleana, matrizBooleana, matrizBooleana)
-    # Calculamos los centroides, y nos saltamos el primero (el elemento "0"):
-    centroides = ImageMorphology.component_centroids(labelArray)[2:end]
-    # Para cada centroide, ponemos su situacion en color rojo
-    for centroide in centroides
-        x = Int(round(centroide[1]))
-        y = Int(round(centroide[2]))
-        imagenObjetos[x, y] = RGB(1, 0, 0)
-    end
-
-    imagenObjetos1 = RGB.(matrizBooleana1, matrizBooleana1, matrizBooleana1)
-    # Calculamos los centroides, y nos saltamos el primero (el elemento "0"):
-    centroides1 = ImageMorphology.component_centroids(labelArray1)[2:end]
-    # Para cada centroide, ponemos su situacion en color rojo
-    for centroide in centroides1
-        x = Int(round(centroide[1]))
-        y = Int(round(centroide[2]))
-        imagenObjetos1[x, y] = RGB(1, 0, 0)
-    end
-
-    imagenObjetos2 = RGB.(matrizBooleana2, matrizBooleana2, matrizBooleana2)
-    # Calculamos los centroides, y nos saltamos el primero (el elemento "0"):
-    centroides2 = ImageMorphology.component_centroids(labelArray2)[2:end]
-    # Para cada centroide, ponemos su situacion en color rojo
-    for centroide in centroides2
-        x = Int(round(centroide[1]))
-        y = Int(round(centroide[2]))
-        imagenObjetos2[x, y] = RGB(1, 0, 0)
-    end
-
-    imagenObjetos3 = RGB.(matrizBooleana3, matrizBooleana3, matrizBooleana3)
-    # Calculamos los centroides, y nos saltamos el primero (el elemento "0"):
-    centroides3 = ImageMorphology.component_centroids(labelArray3)[2:end]
-    # Para cada centroide, ponemos su situacion en color rojo
-    for centroide in centroides3
-        x = Int(round(centroide[1]))
-        y = Int(round(centroide[2]))
-        imagenObjetos3[x, y] = RGB(1, 0, 0)
-    end
-
-    # Vamos a recuadrar el bounding box de estos objetos, en color verde
-    # Calculamos los bounding boxes, y eliminamos el primero (el objeto "0")
-    tmp=0;
-    value = 0;
-    value1 = 0;
-    value2 = 0;
-    value3 = 0;
-    taman3 = 0;
-    loc3x=0;
-    loc3y=0;
-
-    alto1 = 0;
-    boundingBoxes = ImageMorphology.component_boxes(labelArray)[2:end]
-    for boundingBox in boundingBoxes
-        x1 = boundingBox[1][1]
-        y1 = boundingBox[1][2]
-        x2 = boundingBox[2][1]
-        y2 = boundingBox[2][2]
-        value =  (x2 - x1) / (y2 - y1);
-        imagenObjetos[ x1:x2 , y1 ] .= RGB(0,1,0);
-        imagenObjetos[ x1:x2 , y2 ] .= RGB(0,1,0);
-        imagenObjetos[ x1 , y1:y2 ] .= RGB(0,1,0);
-        imagenObjetos[ x2 , y1:y2 ] .= RGB(0,1,0);
-    end;
-    boundingBoxes1 = ImageMorphology.component_boxes(labelArray1)[2:end]
-    for boundingBox in boundingBoxes1
-        x1 = boundingBox[1][1]
-        y1 = boundingBox[1][2]
-        x2 = boundingBox[2][1]
-        y2 = boundingBox[2][2]
-            value1 =  (x2 - x1) / (y2 - y1);
-            alto1= (x2 - x1)/parameter[1]
-        imagenObjetos1[ x1:x2 , y1 ] .= RGB(0,1,0);
-        imagenObjetos1[ x1:x2 , y2 ] .= RGB(0,1,0);
-        imagenObjetos1[ x1 , y1:y2 ] .= RGB(0,1,0);
-        imagenObjetos1[ x2 , y1:y2 ] .= RGB(0,1,0);
-    end;
-    display(imagenObjetos1)
-    boundingBoxes2 = ImageMorphology.component_boxes(labelArray2)[2:end]
-    for boundingBox in boundingBoxes2
-        x1 = boundingBox[1][1]
-        y1 = boundingBox[1][2]
-        x2 = boundingBox[2][1]
-        y2 = boundingBox[2][2]
-        value2 =  (x2 - x1) / (y2 - y1);
-        imagenObjetos2[ x1:x2 , y1 ] .= RGB(0,1,0);
-        imagenObjetos2[ x1:x2 , y2 ] .= RGB(0,1,0);
-        imagenObjetos2[ x1 , y1:y2 ] .= RGB(0,1,0);
-        imagenObjetos2[ x2 , y1:y2 ] .= RGB(0,1,0);
-    end;
-    display(imagenObjetos2)
-    boundingBoxes3 = ImageMorphology.component_boxes(labelArray3)[2:end]
-    for boundingBox in boundingBoxes3
-        x1 = boundingBox[1][1]
-        y1 = boundingBox[1][2]
-        x2 = boundingBox[2][1]
-        y2 = boundingBox[2][2]
-            value3 = (x2 - x1) / (y2 - y1);
-            taman3 = ((x2 - x1) * (y2 - y1)) / (parameter[1] * parameter[2])
-            loc3x = x1/parameter[1];
-            loc3y = y1/parameter[2];
-            imagenObjetos3[ x1:x2 , y1 ] .= RGB(0,1,0);
-            imagenObjetos3[ x1:x2 , y2 ] .= RGB(0,1,0);
-            imagenObjetos3[ x1 , y1:y2 ] .= RGB(0,1,0);
-            imagenObjetos3[ x2 , y1:y2 ] .= RGB(0,1,0);
-    end;
-    display(imagenObjetos3)
-
-    return [value value1 value3 alto1 taman3]
-end;
 
 
 function Writem(imagen::Array{RGB{Normed{UInt8,8}},2}, text)
@@ -808,9 +614,10 @@ end;
 function loadTrainingDataset()
     barroco = loadFolderImages("Barroco")
     popArt = loadFolderImages("PopArt")
+    ukiyo = loadFolderImages("Ukiyo")
 
     #targets = [trues(length(positives)); falses(length(negatives))];
-    targets = [Writem.((barroco), "Barroco"); Writem.((popArt), "PopArt")]
+    targets = [Writem.((barroco), "Barroco"); Writem.((popArt), "PopArt");Writem.((ukiyo),"Ukiyo")]
     return (getInputs(), targets)
 end;
 #targets = [trues(length(positives)); falses(length(negatives))];
@@ -1046,15 +853,12 @@ function modelCrossValidation(modelType::Symbol, modelHyperparameters::Dict, inp
 
             # Entrenamos el modelo con el conjunto de entrenamiento
             model = fit!(model, trainingInputs, trainingTargets);
-
             # Pasamos el conjunto de test
             testOutputs = predict(model, testInputs);
-
             # Calculamos las metricas correspondientes con la funcion desarrollada en la practica anterior
             #println(testOutputs);
             #println(testTargets);
             (acc, _, _, _, _, _, F1, _) = confusionMatrix(unique(targets), testOutputs, testTargets);
-
         else
 
             # Vamos a usar RR.NN.AA.
@@ -1134,29 +938,33 @@ end;
 
 
     # Fijamos la semilla aleatoria para poder repetir los experimentos
-    seed!(11);
+    #seed!(11);
 
     numFolds = 10;
 
     # Parametros principales de la RNA y del proceso de entrenamiento
-    topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
+    topologies = [[1],[2],[10],[315],[1, 1],[2, 2],[4, 3],[12, 16]]
+    #topology = [12, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
     learningRate = 0.0122; # Tasa de aprendizaje
     numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
     validationRatio = 0.1; # Porcentaje de patrones que se usaran para validacion. Puede ser 0, para no usar validacion
     maxEpochsVal = 6; # Numero de ciclos en los que si no se mejora el loss en el conjunto de validacion, se para el entrenamiento
-    numRepetitionsAANTraining = 50; # Numero de veces que se va a entrenar la RNA para cada fold por el hecho de ser no determinístico el entrenamiento
+    numRepetitionsAANTraining = 10; # Numero de veces que se va a entrenar la RNA para cada fold por el hecho de ser no determinístico el entrenamiento
 
     # Parametros del SVM
     kernel = "rbf";
     kernelDegree = 3;
     kernelGamma = 2;
-    C=1;
+    C=10;
+    Cs=[1,2,3,6,10,25,100,600,1200]
 
     # Parametros del arbol de decision
+    maxDepths = [1,2,4,5,6,10,13,25,147]
     maxDepth = 4;
 
     # Parapetros de kNN
-    numNeighbors = 3;
+    numsNeighbors = [3,4,7,10,20,100]
+    #numNeighbors = 6;
 
     (dataset, target) = loadTrainingDataset(); #necesito ayuda para convertir los inputs
     inputs =convert(Array{Float64,2}, dataset');
@@ -1167,6 +975,8 @@ end;
     normalizeMinMax!(inputs);
 
     # Entrenamos las RR.NN.AA.
+    for topology in topologies
+    #println("\n\nTopology: ",topology,"\n")
     modelHyperparameters = Dict();
     modelHyperparameters["topology"] = topology;
     modelHyperparameters["learningRate"] = learningRate;
@@ -1174,18 +984,28 @@ end;
     modelHyperparameters["numExecutions"] = numRepetitionsAANTraining;
     modelHyperparameters["maxEpochs"] = numMaxEpochs;
     modelHyperparameters["maxEpochsVal"] = maxEpochsVal;
-    modelCrossValidation(:ANN, modelHyperparameters, inputs, targets, numFolds);
-
+    
+    #modelCrossValidation(:ANN, modelHyperparameters, inputs, targets, numFolds);
+    end
     # Entrenamos las SVM
+    for Cx in Cs
+     #println("\n\nC: ",Cx,"\n")
+
     modelHyperparameters = Dict();
     modelHyperparameters["kernel"] = kernel;
     modelHyperparameters["kernelDegree"] = kernelDegree;
     modelHyperparameters["kernelGamma"] = kernelGamma;
-    modelHyperparameters["C"] = C;
-    #modelCrossValidation(:SVM, modelHyperparameters, inputs, targets, numFolds);
+    modelHyperparameters["C"] = Cx;
 
+        #modelCrossValidation(:SVM, modelHyperparameters, inputs, targets, numFolds);
+   end
     # Entrenamos los arboles de decision
-    #modelCrossValidation(:DecisionTree, Dict("maxDepth" => maxDepth), inputs, targets, numFolds);
-
+    for maxDepthx in maxDepths
+       # println("\n\nmaxDepth: ",maxDepthx,"\n")
+      #modelCrossValidation(:DecisionTree, Dict("maxDepth" => maxDepthx), inputs, targets, numFolds);
+    end
     # Entrenamos los kNN
-    #modelCrossValidation(:kNN, Dict("numNeighbors" => numNeighbors), inputs, targets, numFolds);
+    for numNeighborsx in numsNeighbors
+       println("\n\nnumNeighbours: ",numNeighborsx,"\n")
+       modelCrossValidation(:kNN, Dict("numNeighbors" => numNeighborsx), inputs, targets, numFolds);
+    end
