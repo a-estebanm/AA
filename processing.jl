@@ -1,7 +1,5 @@
-using Images
-using TestImages
-using Statistics
-using JLD2
+
+
 
 function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
     matrix = Array{Float64, 3}(undef, size(image,1), size(image,2), 3)
@@ -60,10 +58,7 @@ function countPictures(carpetas::Vector{String})
 end
 
 function getInputs()
-    if (!occursin("BD",pwd())) 
-        cd("BD")
-    end
-    carpetas = readdir()
+    carpetas = readdir("BD")
     photosNum = countPictures(carpetas)
     n_estilos = length(readdir())
     colors = Array{Any,2}(undef, 4, photosNum)
@@ -82,7 +77,53 @@ function getInputs()
     return colors
 end
 
+function getTargets()
+    carpetas = readdir("BD")
+    photosNum = countPictures(carpetas)
+    n_estilos = length(readdir())
+    targets = Array{Any,1}(undef,photosNum)
+    aux = 0
+    for estilo in carpetas
+        fotos = readdir(estilo)
+        for foto in fotos
+            aux += 1
+            img = load(string(estilo,"/",foto))
+            targets[aux] = estilo
+        end
+    end
+    return targets
+end
+
+function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
+    matrix = Array{Float32, 3}(undef, size(image,1), size(image,2), 3)
+    matrix[:,:,1] = convert(Array{Float64,2}, red.(image));
+    matrix[:,:,2] = convert(Array{Float64,2}, green.(image));
+    matrix[:,:,3] = convert(Array{Float64,2}, blue.(image));
+    return matrix;
+end;
+imageToColorArray(image::Array{RGBA{Normed{UInt8,8}},2}) = imageToColorArray(RGB.(image));
+
+imageToGrayArray(image:: Array{RGB{Normed{UInt8,8}},2}) = convert(Array{Float32,2}, gray.(Gray.(image)));
+imageToGrayArray(image::Array{RGBA{Normed{UInt8,8}},2}) = imageToGrayArray(RGB.(image));
+
+
+function loadImages(folderName::String)
+    isImageExtension(fileName::String) = any(uppercase(fileName[end-3:end]) .== [".JPG", ".PNG"]);
+    images = [];
+    for style in readdir(folderName)
+        for fileName in readdir(string(folderName,"/",style))
+            if isImageExtension(fileName)
+                image = load(string(folderName,"/",style, "/", fileName));
+                # Check that they are color images
+                @assert(isa(image, Array{RGBA{Normed{UInt8,8}},2}) || isa(image, Array{RGB{Normed{UInt8,8}},2}))
+                # Add the image to the vector of images
+                push!(images, imresize(image,28,28));
+            end;
+        end;
+    end;
+    # Convert the images to arrays by broadcasting the conversion functions, and return the resulting vectors
+    return (imageToColorArray.(images));#, imageToGrayArray.(images)); #Lo dejo comentado mientra no sé si lo usaré
+end;
+
 #matrix = getInputs()
 #print(matrix)
-
-
