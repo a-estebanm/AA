@@ -936,7 +936,7 @@ end;
 # -------------------------------------------------------------------------
 # Ejemplo de uso de estas funciones, con conjuntos de entrenamiento, validacion y test:
 
-
+function run()
     # Fijamos la semilla aleatoria para poder repetir los experimentos
     #seed!(11);
 
@@ -1009,3 +1009,5 @@ end;
        println("\n\nnumNeighbours: ",numNeighborsx,"\n")
        modelCrossValidation(:kNN, Dict("numNeighbors" => numNeighborsx), inputs, targets, numFolds);
     end
+end
+#run()

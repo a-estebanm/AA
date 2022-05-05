@@ -31,7 +31,7 @@ targets = convert(Array{Any,1}, target);
 
 
 classes = unique(targets);
-targets = oneHotEncoding(targets, classes);
+#targets = oneHotEncoding(targets, classes);
 
 numFolds = 10
 
@@ -44,7 +44,7 @@ train_imgs   = inputs[crossValidationIndices.!=fold_img,:];
 train_labels = targets[crossValidationIndices.!=fold_img, :];
 test_imgs    = inputs[crossValidationIndices.==fold_img,:];
 test_labels  = targets[crossValidationIndices.==fold_img,:];
-labels = unique(targets); # Las etiquetas
+labels = classes; # Las etiquetas
 
 # Tanto train_imgs como test_imgs son arrays de arrays bidimensionales (arrays de imagenes), es decir, son del tipo Array{Array{Float32,2},1}
 #  Generalmente en Deep Learning los datos estan en tipo Float32 y no Float64, es decir, tienen menos precision
@@ -93,7 +93,7 @@ println("Valores minimo y maximo de las entradas: (", minimum(train_imgs), ", ",
 
 # Hacemos los indices para las particiones
 # Cuantos patrones va a tener cada particion
-batch_size = 128
+batch_size = 300
 # Creamos los indices: partimos el vector 1:N en grupos de batch_size
 gruposIndicesBatch = Iterators.partition(1:size(train_imgs,4), batch_size);
 println("He creado ", length(gruposIndicesBatch), " grupos de indices para distribuir los patrones en batches");
@@ -270,7 +270,8 @@ while (!criterioFin)
 
     # Hay que declarar las variables globales que van a ser modificadas en el interior del bucle
     global numCicloUltimaMejora, numCiclo, mejorPrecision, mejorModelo, criterioFin;
-
+    print("Loss: ", loss, "\n")
+    print("Ann: ", ann, "\n")
     # Se entrena un ciclo
     Flux.train!(loss, Flux.params(ann), train_set, opt);
 
