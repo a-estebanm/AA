@@ -13,7 +13,6 @@ function holdOut(N::Int, P::Float64)
     indices = randperm(N);
     numTrainingInstances = Int(round(N*(1-P)));
 
-    @assert (size(indices[1:numTrainingInstances],1) + size(indices[numTrainingInstances+1:end]),1)=N;      
 
     return (indices[1:numTrainingInstances], indices[numTrainingInstances+1:end]);
 end
@@ -31,9 +30,6 @@ function holdOut(N::Int, Pval::Float64, Ptest::Float64)
     (trainingIndices, validationIndices) =
     holdOut(length(trainingValidationIndices), Pval*N/length(trainingValidationIndices))
 
-    @assert (trainingValidationIndices[trainingIndices].length+
-            trainingValidationIndices[validationIndices].length+
-            testIndices.length)=N;
 
     return (trainingValidationIndices[trainingIndices],trainingValidationIndices[validationIndices], testIndices);
 end;
@@ -115,12 +111,11 @@ function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<
 
     return (ann, trainingLosses, testLosses, trainingAccuracies, testAccuracies);
 end;
-
 # Funcion para entrenar RR.NN.AA. con conjuntos de entrenamiento, validacion y test
 # Es la funcion anterior, modificada para calcular errores en el conjunto de
 # validacion, y parar el entrenamiento si es necesario
 function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
-    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}};
+    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
     test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}};
     maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1,
     maxEpochsVal::Int64=6, showText::Bool=false)
@@ -227,7 +222,7 @@ function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<
 end;
 
 trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}},
-    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}};
+    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}},
     test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}};
     maxEpochs::Int64=1000, minLoss::Float64=0.0, learningRate::Float64=0.1,
     maxEpochsVal::Int64=6, showText::Bool=false) =
@@ -241,19 +236,25 @@ topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
 learningRate = 0.01; # Tasa de aprendizaje
 numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
 testRatio = 0.2; # Porcentaje de patrones que se usaran para test
+
 # Cargamos el dataset
-dataset = readdlm("AA\\Codigospracticas\\iris.data",',');
+dataset = readdlm("iris.data",',');
 # Preparamos las entradas y las salidas deseadas
 inputs = convert(Array{Float64,2}, dataset[:,1:4]);
-targets = oneHotEncoding(dataset[:,5]);
+targets = convert(AbstractArray{Any,1}, dataset[:,5])
+targets = oneHotEncoding(targets);
 # Creamos los indices de entrenamiento y test
 (trainingIndices, testIndices) = holdOut(size(inputs,1), testRatio);
 # Dividimos los datos
 trainingInputs = inputs[trainingIndices,:];
-testInputs = inputs[testIndices,:];
+trainingInputs= convert(Array{Real,2}, trainingInputs);
 
+testInputs = inputs[testIndices,:];
+testInputs= convert(Array{Real,2}, testInputs);
 trainingTargets = targets[trainingIndices,:];
+trainingTargets= convert(Array{Bool,2}, trainingTargets);
 testTargets = targets[testIndices,:];
+testTargets= convert(Array{Bool,2}, testTargets);
 # Calculamos los valores de normalizacion solo del conjunto de entrenamiento
 normalizationParams = calculateMinMaxNormalizationParameters(trainingInputs);
 # Normalizamos las entradas entre maximo y minimo de forma separada para
@@ -262,7 +263,7 @@ normalizeMinMax!(trainingInputs, normalizationParams);
 normalizeMinMax!(testInputs, normalizationParams);
 # Y creamos y entrenamos la RNA con los parametros dados
 (ann, trainingLosses, trainingAccuracies) = trainClassANN(topology,(trainingInputs, trainingTargets),(testInputs, testTargets);
-maxEpochs=numMaxEpochs, learningRate=learningRate, maxEpochsVal=maxEpochsVal, showText=true);
+maxEpochs=numMaxEpochs, learningRate=learningRate, showText=true);
 # -------------------------------------------------------------------------
 # Ejemplo de uso de estas funciones, con conjuntos de entrenamiento, validacion y test:
 # Parametros principales de la RNA y del proceso de entrenamiento
@@ -273,10 +274,11 @@ validationRatio = 0.2; # Porcentaje de patrones que se usaran para validacion
 testRatio = 0.2; # Porcentaje de patrones que se usaran para test
 maxEpochsVal = 6; # Numero de ciclos en los que si no se mejora el loss en el conjunto de validacion, se para el entrenamiento
 # Cargamos el dataset
-dataset = readdlm("AA\\Codigospracticas\\iris.data",',');
+dataset = readdlm("iris.data",',');
 # Preparamos las entradas y las salidas deseadas
 inputs = convert(Array{Float64,2}, dataset[:,1:4]);
-targets = oneHotEncoding(dataset[:,5]);
+targets = convert(AbstractArray{Any,1}, dataset[:,5])
+targets = oneHotEncoding(targets);
 # Normalizamos las entradas, a pesar de que algunas se vayan a utilizar para test
 normalizeMinMax!(inputs);
 # Creamos los indices de entrenamiento, validacion y test
@@ -284,9 +286,12 @@ normalizeMinMax!(inputs);
 validationRatio, testRatio);
 # Dividimos los datos
 trainingInputs = inputs[trainingIndices,:];
+trainingInputs= convert(Array{Real,2}, trainingInputs);
 validationInputs = inputs[validationIndices,:];
 testInputs = inputs[testIndices,:];
+testInputs= convert(Array{Real,2}, testInputs);validationInputs = inputs[validationIndices,:];
 trainingTargets = targets[trainingIndices,:];
+trainingTargets= convert(Array{Bool,2}, trainingTargets);
 validationTargets = targets[validationIndices,:];
 testTargets = targets[testIndices,:];
 

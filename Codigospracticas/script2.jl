@@ -323,8 +323,6 @@ function trainClassANN(topology::Array{Int64,1}, dataset::Tuple{AbstractArray{<:
     return (ann, trainingLosses, trainingAccuracies);
 end;
 
-trainClassANN(topology::Array{Int64,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}}; maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.1) =
-    trainClassANN(topology, (dataset[1], reshape(dataset[2], 1)); maxEpochs, minLoss, learningRate)
 
 
 

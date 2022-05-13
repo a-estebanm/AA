@@ -12,9 +12,10 @@ using Statistics
 #outputs = softmax(outputs')';
 #vmax = maximum(outputs, dims=2);
 #outputs = (outputs .== vmax);
+#include("script3.jl")
+include("script4.1.jl")
 
-
-function confusionMatrix(outputs::Array{Bool,2}, targets::Array{Bool,2}; weighted::Bool=true)
+function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{Bool,2}; weighted::Bool=true)
     @assert(size(outputs)==size(targets));
     numClasses = size(targets,2);
     # Nos aseguramos de que no hay dos columnas
@@ -41,6 +42,9 @@ function confusionMatrix(outputs::Array{Bool,2}, targets::Array{Bool,2}; weighte
     # y no se tendran en cuenta a la hora de unir estas metricas
     for numClass in findall(numInstancesFromEachClass.>0)
         # Calculamos las metricas de cada problema binario correspondiente a cada clase y las almacenamos en los vectores correspondientes
+        outputs2=convert(AbstractArray{Bool,1},outputs[:,numClass])
+        targets2=convert(AbstractArray{Bool,1},targets[:,numClass])
+
         (_, _, recall[numClass], specificity[numClass], precision[numClass], NPV[numClass], F1[numClass], _) = confusionMatrix(outputs[:,numClass],targets[:,numClass]);
     end;
     # Reservamos memoria para la matriz de confusion
@@ -85,7 +89,7 @@ function confusionMatrix(outputs::AbstractArray{<:Real,2}, targets::AbstractArra
     return confusionMatrix(oneHotEncoding(outputs, classes),oneHotEncoding(targets, classes); weighted=weighted);
 end;
 
-confusionMatrix(outputs::AbstractArray{<:Any,2}, targets::AbstarctArray{<:Any,2}; weighted::Bool=true) = confusionMatrix(classifyOutputs(outputs), targets; weighted=weighted);
+confusionMatrix(outputs::AbstractArray{<:Any,2}, targets::AbstractArray{<:Any,2}; weighted::Bool=true) = confusionMatrix(classifyOutputs(outputs), targets; weighted=weighted);
 
     #NO ES NECESARIO CREO
    # De forma similar a la anterior, añado estas funcion porque las RR.NN.AA. dan la salida como matrices de valores Float32 en lugar de Float64
@@ -139,6 +143,7 @@ weighted=weighted)
 # Para probar estas funciones, partimos de los resultados del entrenamiento de la practica anterior
 println("Results in the training set:")
 trainingOutputs = collect(ann(trainingInputs')');
+#trainingInputs = convert(AbstractArray{Bool,1}, trainingOutputs)
 printConfusionMatrix(trainingOutputs, trainingTargets; weighted=true);
 println("Results in the validation set:")
 validationOutputs = collect(ann(validationInputs')');
@@ -181,7 +186,8 @@ maxEpochsVal = 6; # Numero de ciclos en los que si no se mejora el loss en el co
 dataset = readdlm("iris.data",',');
 # Preparamos las entradas y las salidas deseadas
 inputs = convert(Array{Float64,2}, dataset[:,1:4]);
-targets = oneHotEncoding(dataset[:,5]);
+targets = convert(AbstractArray{Any,1}, dataset[:,5])
+targets = oneHotEncoding(targets);
 numClasses = size(targets,2);
 # Nos aseguramos que el numero de clases es mayor que 2, porque en caso contrario no tiene sentido hacer un "one vs all"
 @assert(numClasses>2);
@@ -206,9 +212,9 @@ for numClass = 1:numClasses
     # A partir de ahora, no vamos a mostrar por pantalla el resultado de cada ciclo del entrenamiento de la RNA (no vamos a poner el showText=true)
     local ann;
     ann, = trainClassANN(topology,
-    trainingInputs, trainingTargets[:,[numClass]],
-    validationInputs, validationTargets[:,[numClass]],
-    testInputs, testTargets[:,[numClass]];
+    (trainingInputs, trainingTargets[:,[numClass]]),
+    (validationInputs, validationTargets[:,[numClass]]),
+    (testInputs, testTargets[:,[numClass]]);
     maxEpochs=numMaxEpochs, learningRate=learningRate,
     maxEpochsVal=maxEpochsVal);
     # Aplicamos la RNA para calcular las salidas para esta clase concreta y las guardamos en la columna correspondiente de la matriz
