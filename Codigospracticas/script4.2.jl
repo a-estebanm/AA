@@ -12,7 +12,7 @@ using Statistics
 #outputs = softmax(outputs')';
 #vmax = maximum(outputs, dims=2);
 #outputs = (outputs .== vmax);
-#include("script3.jl")
+include("script3.jl")
 include("script4.1.jl")
 
 function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{Bool,2}; weighted::Bool=true)
@@ -24,7 +24,7 @@ function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{
         return confusionMatrix(outputs[:,1], targets[:,1]);
     else
     # Nos aseguramos de que en cada fila haya uno y sólo un valor a true
-    @assert(all(sum(outputs, dims=2).==1));
+    #@assert(all(sum(outputs, dims=2).==1));
     # Reservamos memoria para las metricas de cada clase, inicializandolas a 0 porque algunas posiblemente no se calculen
     recall = zeros(numClasses);
     specificity = zeros(numClasses);
@@ -83,14 +83,15 @@ end;
 
 function confusionMatrix(outputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2}; weighted::Bool=true)
     # Comprobamos que todas las clases de salida esten dentro de las clases de las salidas deseadas
-    @assert(all([in(output, unique(targets)) for output in outputs]));
-    classes = unique(targets);
+    #@assert(all([in(output, unique(targets)) for output in outputs]));
     # Es importante calcular el vector de clases primero y pasarlo como argumento a las 2 llamadas a oneHotEncoding para que el orden de las clases sea el mismo en ambas matrices
-    return confusionMatrix(oneHotEncoding(outputs, classes),oneHotEncoding(targets, classes); weighted=weighted);
+    return confusionMatrix(classifyOutputs(outputs),targets; weighted=weighted);
 end;
 
-confusionMatrix(outputs::AbstractArray{<:Any,2}, targets::AbstractArray{<:Any,2}; weighted::Bool=true) = confusionMatrix(classifyOutputs(outputs), targets; weighted=weighted);
-
+function confusionMatrix(outputs::AbstractArray{<:Any,1}, targets::AbstractArray{<:Any,1}; weighted::Bool=true) 
+    #@assert(all([in(output, unique(targets)) for output in outputs]))
+    confusionMatrix(classifyOutputs(outputs), targets; weighted=weighted);
+end
     #NO ES NECESARIO CREO
    # De forma similar a la anterior, añado estas funcion porque las RR.NN.AA. dan la salida como matrices de valores Float32 en lugar de Float64
    # Con estas funcion se pueden usar indistintamente matrices de Float32 o Float64
@@ -153,6 +154,7 @@ testOutputs = collect(ann(testInputs')');
 printConfusionMatrix(testOutputs, testTargets; weighted=true);
 println("Results in the whole dataset:")
 outputs = collect(ann(inputs')');
+#targets = oneHotEncoding(targets)
 printConfusionMatrix(outputs, targets; weighted=true);
 # -------------------------------------------------------------------------
 # Estrategia "uno contra todos" y código de ejemplo:
@@ -233,5 +235,5 @@ weighted=true);
 println("Results in the test set:")
 printConfusionMatrix(outputs[testIndices,:], testTargets; weighted=true);
 println("Results in the whole dataset:")
-printConfusionMatrix(outputs, targets; weighted=true);
+printConfusionMatrix(outputs, targets; weighted=true);#
    

@@ -37,7 +37,7 @@ end
 
 oneHotEncoding(feature::AbstractArray{<:Any,1}) = oneHotEncoding(feature::AbstractArray{<:Any,1},unique(feature));
 
-#oneHotEncoding(feature::AbstractArray{Bool,1}) = reshape(feature,1); #MIRAR ESTO
+oneHotEncoding(feature::AbstractArray{Bool,1}) = feature; #MIRAR ESTO
 
 print("\n\nEnd oneHotEncoding\n\n")
 
@@ -327,7 +327,7 @@ end;
 
 
 
-# Parametros principales de la RNA y del proceso de entrenamiento
+#= Parametros principales de la RNA y del proceso de entrenamiento
 topology = [1, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
 learningRate = 0.005; # Tasa de aprendizaje
 numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
@@ -359,4 +359,4 @@ normalizeMinMax!(inputs);
 
 
 
-print("\n\nEnd Practice Two\n\n")
+print("\n\nEnd Practice Two\n\n")=#
