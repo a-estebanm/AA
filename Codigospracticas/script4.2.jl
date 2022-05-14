@@ -42,9 +42,6 @@ function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{
     # y no se tendran en cuenta a la hora de unir estas metricas
     for numClass in findall(numInstancesFromEachClass.>0)
         # Calculamos las metricas de cada problema binario correspondiente a cada clase y las almacenamos en los vectores correspondientes
-        outputs2=convert(AbstractArray{Bool,1},outputs[:,numClass])
-        targets2=convert(AbstractArray{Bool,1},targets[:,numClass])
-
         (_, _, recall[numClass], specificity[numClass], precision[numClass], NPV[numClass], F1[numClass], _) = confusionMatrix(outputs[:,numClass],targets[:,numClass]);
     end;
     # Reservamos memoria para la matriz de confusion
@@ -89,7 +86,7 @@ function confusionMatrix(outputs::AbstractArray{<:Real,2}, targets::AbstractArra
 end;
 
 function confusionMatrix(outputs::AbstractArray{<:Any,1}, targets::AbstractArray{<:Any,1}; weighted::Bool=true) 
-    #@assert(all([in(output, unique(targets)) for output in outputs]))
+    @assert(all([in(output, unique(targets)) for output in outputs]))
     confusionMatrix(classifyOutputs(outputs), targets; weighted=weighted);
 end
     #NO ES NECESARIO CREO
@@ -162,7 +159,9 @@ printConfusionMatrix(outputs, targets; weighted=true);
 function oneVSall(inputs::Array{Float64,2}, targets::Array{Bool,2})numClasses = size(targets,2);
     # Nos aseguramos de que hay mas de dos clases
     @assert(numClasses>2);
-    outputs = Array{Float64,2}(undef, size(inputs,1), numClasses);
+    numInstances=size(inputs,1)
+    #outputs = Array{Float64,2}(undef, size(inputs,1), numClasses);
+    outputs = Array{Float32,2}(undef, numInstances, numClasses);
     for numClass in 1:numClasses
         model = fit(inputs, targets[:,[numClass]]);
         outputs[:,numClass] .= model(inputs);
