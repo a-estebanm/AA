@@ -236,11 +236,15 @@ function accuracy(outputs::AbstractArray{Real,2}, targets::AbstractArray{Bool,2}
     end;
 end;
 
-#La salida de las funciones es Float32, con el siguiente código puede ser tanto Float32 como Float64
+#La salida de las funciones es Real, con el siguiente código puede ser tanto Float32 como Float64
+accuracy(outputs::Array{Float64,1}, targets::Array{Bool,1}; threshold::Float64=0.5) =
+    accuracy(convert(AbstractArray{Real,1},outputs), targets; threshold=threshold);
 accuracy(outputs::Array{Float32,1}, targets::Array{Bool,1}; threshold::Float64=0.5) =
-    accuracy(Float64.(outputs), targets; threshold=threshold);
+    accuracy(convert(AbstractArray{Real,1},outputs), targets; threshold=threshold);
 accuracy(outputs::Array{Float32,2}, targets::Array{Bool,2}; dataInRows::Bool=true) =
-    accuracy(Float64.(outputs), targets; dataInRows=dataInRows);
+    accuracy(convert(AbstractArray{Real,2},outputs), targets; dataInRows=dataInRows);
+accuracy(outputs::Array{Float64,2}, targets::Array{Bool,2}; dataInRows::Bool=true) =
+    accuracy(convert(AbstractArray{Real,2},outputs), targets; dataInRows=dataInRows);
 
 #Función crear RNA de clasificación
 #Input: Nº neuronas entrada, nº neuronas salida y topología (nº capas ocultas)
@@ -293,14 +297,14 @@ function trainClassANN(topology::AbstractArray{Int64,1},
         # Calculamos la salida de la RNA. Para ello hay que pasar la matriz de
         #entradas traspuesta (cada patron en una columna). La matriz de salidas tiene un
         #patron en cada columna
-        outputs = ann(inputs');
+        global outputs = ann(inputs');
         # Para calcular la precision, ponemos 2 opciones aqui equivalentes:
         # Pasar las matrices con los datos en las columnas. La matriz de
         #salidas ya tiene un patron en cada columna
         acc = accuracy(outputs, Array{Bool,2}(targets'); dataInRows=false);
         # Pasar las matrices con los datos en las filas. Hay que trasponer la
         #matriz de salidas de la RNA, puesto que cada dato esta en una fila
-        acc = accuracy(Array{Float64,2}(outputs'), targets; dataInRows=true);
+        acc = accuracy(Array{Real,2}(outputs'), targets; dataInRows=true);
         # Mostramos por pantalla el resultado de este ciclo de entrenamiento
         println("Epoch ", numEpoch, ": loss: ", trainingLoss, ", accuracy: ", 100*acc, " %");
         return (trainingLoss, acc)
@@ -329,7 +333,7 @@ function trainClassANN(topology::AbstractArray{Int64,1},
 end;
 
 function trainClassANN(topology::AbstractArray{Int64,1}, 
-    dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}};
+    dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}};
      maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.01)
 
     trainClassANN(topology,(dataset[1],reshape(dataset[2],(:,1)));
