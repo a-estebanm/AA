@@ -20,18 +20,21 @@ loss(inp, targets) = Losses.crossentropy(ann(inp), targets)
 #Flux.train!(loss, params(ann), [(in, targets’)], ADAM(learningRate));
 
 function oneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{<:Any,1})
-    num_class = length(clases)
-    if (num_class == 2)        # Si solo hay dos clases, se devuelve una matriz con una columna
-    	cat_targets = Array{Bool,2}(undef, size(targets,1), 1);
-    	cat_targets[:,1] .= (targets.==clases[1])
-        return cat_targets
+    @assert(all([in(value, classes) for value in feature]))
+    numClasses = length(classes)
+    @assert(numClasses > 1)
+    if (numClasses == 2)
+        # Si solo hay dos clases, se devuelve una matriz con una columna
+        oneHot = Array{Bool,2}(undef, size(feature, 1), 1)
+        oneHot[:, 1] .= (feature .== classes[1])
     else
-    	cat_targets = Array{Bool,2}(undef, size(targets,1), num_class)
-    	for num = 1:num_class
-    		cat_targets[:,num_class] .= (targets.==clases[num])
-    	end
-        return cat_targets
+        # Si hay mas de dos clases se devuelve una matriz con una columna por clase
+        oneHot = Array{Bool,2}(undef, size(feature, 1), numClasses)
+        for numClass = 1:numClasses
+            oneHot[:, numClass] .= (feature .== classes[numClass])
+        end
     end
+    return oneHot
 end
 
 
@@ -85,7 +88,7 @@ calculateZeroMeanNormalizationParameters(dataset::AbstractArray{<:Real,2}; dataI
 # 4 versiones de la función para normalizar entre máximo y minimo:
 # - Nos dan los parametros de normalizacion, y se quiere modificar el array de
 #entradas (el nombre de la funcion acaba en '!')
-function normalizeMinMax!(dataset::Array{<:Real,2}, normalizationParameters::NTuple{2, AbstractArray{<:Real,2}}; dataInRows=true)
+function normalizeMinMax!(dataset::AbstractArray{<:Real,2}, normalizationParameters::NTuple{2, AbstractArray{<:Real,2}}; dataInRows=true)
     min = normalizationParameters[1];
     max = normalizationParameters[2];
     dataset .-= min;
@@ -178,10 +181,10 @@ end;
 #Inputs: targets(Matriz salidas deseadas) y outputs(Salidas emitidas por modelo)
 
 #Función 1
-accuracy(outputs::Array{Bool,1}, targets::Array{Bool,1}) = mean(outputs.==targets);
+accuracy(outputs::AbstractArray{Bool,1}, targets::AbstractArray{Bool,1}) = mean(outputs.==targets);
 
 #Función 2
-function accuracy(outputs::Array{Bool,2}, targets::Array{Bool,2}; dataInRows::Bool=true)
+function accuracy(outputs::AbstractArray{Bool,2}, targets::AbstractArray{Bool,2}; dataInRows::Bool=true)
     @assert(all(size(outputs).==size(targets)));
     if (dataInRows)
         # Cada patron esta en cada fila
@@ -211,10 +214,10 @@ function accuracy(outputs::Array{Bool,2}, targets::Array{Bool,2}; dataInRows::Bo
 end;
 
 #Función 3
-accuracy(outputs::Array{Float64,1}, targets::Array{Bool,1}; threshold::Float64=0.5) = accuracy(Array{Bool,1}(outputs.>=threshold), targets);
+accuracy(outputs::AbstractArray{Real,1}, targets::AbstractArray{Bool,1}; threshold::Float64=0.5) = accuracy(AbstractArray{Bool,1}(outputs.>=threshold), targets);
 
 #Funcion 4
-function accuracy(outputs::Array{Float64,2}, targets::Array{Bool,2}; dataInRows::Bool=true)
+function accuracy(outputs::AbstractArray{Real,2}, targets::AbstractArray{Bool,2}; dataInRows::Bool=true)
     @assert(all(size(outputs).==size(targets)));
     if (dataInRows)
         # Cada patron esta en cada fila
@@ -242,7 +245,7 @@ accuracy(outputs::Array{Float32,2}, targets::Array{Bool,2}; dataInRows::Bool=tru
 #Función crear RNA de clasificación
 #Input: Nº neuronas entrada, nº neuronas salida y topología (nº capas ocultas)
 #Output: RNA de clasificación
-function buildClassANN(numInputs::Int64, topology::Array{Int64,1}, numOutputs::Int64)
+function buildClassANN(numInputs::Int64, topology::AbstractArray{Int64,1}, numOutputs::Int64)
     #Crear RNA vacía
     ann=Chain();
     numInputsLayer = numInputs;
@@ -263,7 +266,9 @@ end;
 
 #Función crear y entrenar una RNA de clasificación
 #Inputs:topology (capas ocultas), dataset (matriz entradas y salidas deseadas)
-function trainClassANN(topology::Array{Int64,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.1)
+function trainClassANN(topology::AbstractArray{Int64,1}, 
+    dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}};
+     maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.01)
 
     inputs=dataset[1];
     targets=dataset[2];
@@ -323,11 +328,15 @@ function trainClassANN(topology::Array{Int64,1}, dataset::Tuple{AbstractArray{<:
     return (ann, trainingLosses, trainingAccuracies);
 end;
 
+function trainClassANN(topology::AbstractArray{Int64,1}, 
+    dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}};
+     maxEpochs::Int=1000, minLoss::Real=0.0, learningRate::Real=0.01)
 
+    trainClassANN(topology,(dataset[1],reshape(dataset[2],(:,1)));
+            maxEpochs=maxEpochs,minLoss=minLoss,learningRate=learningRate)
+end
 
-
-
-#= Parametros principales de la RNA y del proceso de entrenamiento
+# Parametros principales de la RNA y del proceso de entrenamiento
 topology = [1, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
 learningRate = 0.005; # Tasa de aprendizaje
 numMaxEpochs = 1000; # Numero maximo de ciclos de entrenamiento
@@ -359,4 +368,4 @@ normalizeMinMax!(inputs);
 
 
 
-print("\n\nEnd Practice Two\n\n")=#
+print("\n\nEnd Practice Two\n\n")#
