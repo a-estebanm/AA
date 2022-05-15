@@ -36,7 +36,7 @@ end;
 
 # Funcion para entrenar RR.NN.AA. con conjuntos de entrenamiento y test
 # Es la funcion anterior, modificada para calcular errores en el conjunto de test
-function trainClassANN(topology::Array{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
+function trainClassANN(topology::AbstractArray{Int64,1}, training::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
     test::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}}; maxEpochs::Int64=1000, minLoss::Float64=0.0,
     learningRate::Float64=0.1, showText::Bool=false)
     trainingInputs=training[1];

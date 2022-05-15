@@ -4,6 +4,7 @@ using Random:seed!
 @sk_import svm: SVC
 @sk_import tree: DecisionTreeClassifier
 @sk_import neighbors: KNeighborsClassifier
+include("practica5.jl")
 function modelCrossValidation(modelType::Symbol, modelHyperparameters::Dict,
     inputs::Array{Float64,2}, targets::Array{Any,1}, numFolds::Int64)
 
