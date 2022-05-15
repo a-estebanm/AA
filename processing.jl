@@ -1,4 +1,7 @@
-
+using Images
+using TestImages
+using Statistics
+using JLD2
 
 
 function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
@@ -9,39 +12,43 @@ function imageToColorArray(image::Array{RGB{Normed{UInt8,8}},2})
     return matrix;
 end;
 
+
 function displayStats()
-    if (!occursin("BD",pwd())) 
-        cd("BD")
-    end
+    carpetas = readdir("BD")
 
-    n_estilos = length(readdir())
+    n_estilos = length(readdir("BD"))
 
-    red_mean = Array{Float32,2}(undef, n_estilos , 1)
-    blue_mean = Array{Float32,2}(undef, n_estilos, 1)
-    green_mean = Array{Float32,2}(undef, n_estilos, 1)
+    hue_mean = Array{Float32,2}(undef, n_estilos , 1)
+    sat_mean = Array{Float32,2}(undef, n_estilos, 1)
+    val_mean = Array{Float32,2}(undef, n_estilos, 1)
     n_estilo = 0
-    carpetas = readdir()
     for estilo in carpetas
         n_estilo +=1
         fotos = readdir(estilo)
         for foto in fotos
             print(estilo,"/",foto,"\n")
             img = load(string(estilo,"/",foto))
-            red_mean[n_estilo] += mean(red.(img))
-            blue_mean[n_estilo] += mean(blue.(img))
-            green_mean[n_estilo] += mean(green.(img))
-            #auxiliar=imageToColorArray(img)
-            #print("AUX:", auxiliar,"\n")
+            img_hsv = HSV.(img)
+            channels = channelview(float.(img_hsv))
+            hue_img = channels[1,:,:]
+            saturation_img = channels[2,:,:]
+            value_img = channels[3,:,:]
+            hue_mean[n_estilo] = mean(hue_img)
+            sat_mean[n_estilo] = mean(saturation_img)
+            val_mean[n_estilo] = mean(value_img)
         end
     end
 
     print("Resultados\n")
-    print("media acumulada de rojo del barroco:", red_mean[1],"\n")
-    print("media acumulada de azul del barroco:", blue_mean[1],"\n")
-    print("media acumulada de verde del barroco:", green_mean[1],"\n")
-    print("media acumulada de rojo del PopArt:", red_mean[2],"\n")
-    print("media acumulada de azul del PopArt:", blue_mean[2],"\n")
-    print("media acumulada de verde del PopArt:", green_mean[2],"\n")
+    print("media acumulada de hue del barroco:", hue_mean[1],"\n")
+    print("media acumulada de saturation del barroco:", sat_mean[1],"\n")
+    print("media acumulada de value del barroco:", val_mean[1],"\n")
+    print("media acumulada de hue del PopArt:", hue_mean[2],"\n")
+    print("media acumulada de saturation del PopArt:", sat_mean[2],"\n")
+    print("media acumulada de value del PopArt:", val_mean[2],"\n")
+    print("media acumulada de hue del Ukiyo-e:", hue_mean[3],"\n")
+    print("media acumulada de saturation del Ukiyo-e:", sat_mean[3],"\n")
+    print("media acumulada de value del Ukiyo-e:", val_mean[3],"\n")
     print("Final del programa\n")
 
 end
@@ -60,22 +67,30 @@ end
 function getInputs()
     carpetas = readdir("BD")
     photosNum = countPictures(carpetas)
-    n_estilos = length(readdir())
-    colors = Array{Any,2}(undef, 4, photosNum)
+    colors = Array{Any,2}(undef, 6, photosNum)
     aux = 0
     for estilo in carpetas
         fotos = readdir(estilo)
         for foto in fotos
             aux += 1
             img = load(string(estilo,"/",foto))
+            img_hsv = HSV.(img)
             colors[1,aux] = mean(red.(img))
             colors[2,aux] = mean(blue.(img))
             colors[3,aux] = mean(green.(img))
-            colors[4,aux] = mean(gray.(Gray.(img)))
+            channels = channelview(float.(img_hsv))
+            hue_img = channels[1,:,:]
+            saturation_img = channels[2,:,:]
+            value_img = channels[3,:,:]
+            colors[4,aux] = mean(hue_img)
+            colors[5,aux] = mean(saturation_img)
+            colors[6,aux] = mean(value_img)
         end
     end
     return colors
 end
+
+
 
 function getTargets()
     carpetas = readdir("BD")
@@ -125,5 +140,5 @@ function loadImages(folderName::String)
     return (imageToColorArray.(images));#, imageToGrayArray.(images)); #Lo dejo comentado mientra no sé si lo usaré
 end;
 
-#matrix = getInputs()
+displayStats()
 #print(matrix)
