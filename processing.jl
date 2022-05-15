@@ -24,10 +24,10 @@ function displayStats()
     n_estilo = 0
     for estilo in carpetas
         n_estilo +=1
-        fotos = readdir(estilo)
+        fotos = readdir(string("BD/",estilo))
         for foto in fotos
             print(estilo,"/",foto,"\n")
-            img = load(string(estilo,"/",foto))
+            img = load(string("BD/",estilo,"/",foto))
             img_hsv = HSV.(img)
             channels = channelview(float.(img_hsv))
             hue_img = channels[1,:,:]
@@ -49,14 +49,16 @@ function displayStats()
     print("media acumulada de hue del Ukiyo-e:", hue_mean[3],"\n")
     print("media acumulada de saturation del Ukiyo-e:", sat_mean[3],"\n")
     print("media acumulada de value del Ukiyo-e:", val_mean[3],"\n")
+    print("media acumulada de hue del Realismo:", hue_mean[4],"\n")
+    print("media acumulada de saturation del Realismo:", sat_mean[4],"\n")
+    print("media acumulada de value del Realismo:", val_mean[4],"\n")
     print("Final del programa\n")
-
 end
 
 function countPictures(carpetas::Vector{String})
     photoCounter = 0
     for estilo in carpetas
-        fotos = readdir(estilo)
+        fotos = readdir(string("BD/",estilo))
         for foto in fotos
             photoCounter += 1
         end
@@ -70,10 +72,10 @@ function getInputs()
     colors = Array{Any,2}(undef, 6, photosNum)
     aux = 0
     for estilo in carpetas
-        fotos = readdir(estilo)
+        fotos = readdir(string("BD/",estilo))
         for foto in fotos
             aux += 1
-            img = load(string(estilo,"/",foto))
+            img = load(string("BD/",estilo,"/",foto))
             img_hsv = HSV.(img)
             colors[1,aux] = mean(red.(img))
             colors[2,aux] = mean(blue.(img))
@@ -99,10 +101,10 @@ function getTargets()
     targets = Array{Any,1}(undef,photosNum)
     aux = 0
     for estilo in carpetas
-        fotos = readdir(estilo)
+        fotos = readdir(string("BD/",estilo))
         for foto in fotos
             aux += 1
-            img = load(string(estilo,"/",foto))
+            img = load(string("BD/",estilo,"/",foto))
             targets[aux] = estilo
         end
     end
@@ -140,5 +142,4 @@ function loadImages(folderName::String)
     return (imageToColorArray.(images));#, imageToGrayArray.(images)); #Lo dejo comentado mientra no sé si lo usaré
 end;
 
-displayStats()
 #print(matrix)
