@@ -8,9 +8,22 @@ function crossvalidation(N::Int64, k::Int64)
     shuffle!(indices);
     return indices;
 end;
+
+
+function crossvalidation(targets::AbstractArray{Bool,2},k::Int64)
+    indices = Array{Int64,1}(undef, size(targets,1))
+    for numClass in 1:size(targets,2)
+        indices[1+((numClass-1)*sum(targets[:, numClass])):numClass*sum(targets[:, numClass])].=crossvalidation(sum(targets[:, numClass]),k)
+    end
+    return indices
+end
+
+function crossvalidation(targets::AbstractArray{<:Any,1},k::Int64)
+    crossvalidation(oneHotEncoding(targets),k)
+end
 # -------------------------------------------------------------------------
 # Código de prueba:
-#= Fijamos la semilla aleatoria para poder repetir los experimentos
+# Fijamos la semilla aleatoria para poder repetir los experimentos
 seed!(1);
 # Parametros principales de la RNA y del proceso de entrenamiento
 topology = [4, 3]; # Dos capas ocultas con 4 neuronas la primera y 3 la segunda
@@ -99,4 +112,4 @@ println("Average test accuracy on a ", numFolds, "-fold crossvalidation: ",
     100*mean(testAccuracies), ", with a standard deviation of ",
     100*std(testAccuracies));
 println("Average test F1 on a ", numFolds, "-fold crossvalidation: ",
-    100*mean(testF1), ", with a standard deviation of ", 100*std(testF1));=#
+    100*mean(testF1), ", with a standard deviation of ", 100*std(testF1));#
